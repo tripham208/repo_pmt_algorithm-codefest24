@@ -1,0 +1,2 @@
+- can't change global variable from another file
+- can't use out scope variable (global) in match case => hard value
