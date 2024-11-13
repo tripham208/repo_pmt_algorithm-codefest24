@@ -24,6 +24,23 @@ class Objects(Enum):
     BFS_BLOCK = [1, 2, 3, 5]
     NO_DESTROY = [1, 5]
 
+    MARRY_ITEM = [32, 33, 34, 35, 36, 37]
+    DESTRUCTIBLE = [2, 3]
+
+
+class Weapon(Enum):
+    """
+    1:	Wooden pestle \n
+    2:	Phach Than (Bomb)
+
+    use god weapon use
+
+    """
+    WOODEN = 1
+    BOMB = 2
+    HAMMER = 3
+    WIND = 4
+
 
 class MarryItem(Enum):
     RICE = 32
@@ -34,6 +51,7 @@ class MarryItem(Enum):
 
 
 class AnotherItem(Enum):
+    GOD_BADGE = 6
     SPIRIT_STONE = 37
 
 

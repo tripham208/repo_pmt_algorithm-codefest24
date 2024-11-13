@@ -6,7 +6,7 @@ def create_map_zero(cols: int, rows: int):
 
 
 def euclid_distance(start: list, target: list) -> float:
-    return math.sqrt((start[0] - target[0]) ** 2 + (start[1] - target[1]) ** 2)
+    return round(math.sqrt((start[0] - target[0]) ** 2 + (start[1] - target[1]) ** 2), 2)
 
 
 def is_zone(pos: list, size: list) -> int:
@@ -22,3 +22,9 @@ def is_zone(pos: list, size: list) -> int:
         return 1 if pos[1] < p2 else 2
     else:
         return 3 if pos[1] < p2 else 4
+
+
+def dif_distance_with_target(pos_player: list, pos_enemy: list, target: list) -> float:
+    player_distance = euclid_distance(pos_player, target)
+    enemy_distance = euclid_distance(pos_enemy, target)
+    return round(enemy_distance - player_distance, 2)

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from lib.model.enum.gameobjects import MarryItem
+from lib.model.enum.gameobjects import MarryItem, Objects
+from lib.model.enum.range import AroundRange
 from lib.utils.map import create_map_zero
 
 
@@ -12,10 +13,22 @@ class Map:
     cols: int = 0
     rows: int = 0
 
+    def get_pos_spoils(self) -> list:
+        return [[spoil["row"], spoil["col"]] for spoil in self.spoils]
+
 
 @dataclass
 class StatusPlayer:
     transform: bool = False
+    can_use_god_attack: bool = False
+    can_use_item: bool = False
+
+
+@dataclass
+class Locker:
+    danger_pos_lock_max: list
+    danger_pos_lock_bfs: list
+    a_star_lock: list
 
 
 @dataclass
@@ -38,23 +51,38 @@ class EvaluatedMap:
         self.enemy_map = create_map_zero(cols, rows)
         self.road_map = create_map_zero(cols, rows)
 
-    def set_point_map(self):
-        self.set_addition_point()
+    def set_point_map(self, base_map: Map, status: StatusPlayer):
+        self.__set_road_point(base_map)
+        self.__set_addition_point(base_map, status)
 
-    def set_addition_point(self):
-        self.set_bombs()
-        self.set_spoils()
+    def __set_road_point(self, base_map: Map):
+        destructible_values = Objects.DESTRUCTIBLE.value
+        around_range_values = AroundRange.LV1_4.value
 
-    def set_bombs(self):
+        for row in range(base_map.rows):
+            for col in range(base_map.cols):
+                if base_map.map[row][col] in destructible_values:
+                    for i in around_range_values:
+                        self.road_map[row + i[0]][col + i[1]] = 25
+
+    def __set_addition_point(self, base_map: Map, status: StatusPlayer):
+        self.__set_bombs(base_map)
+        self.__set_spoils(base_map, status)
+
+    def __set_bombs(self, base_map: Map):
         pass
 
-    def set_spoils(self):
-        pass
+    def __set_spoils(self, base_map: Map, status: StatusPlayer):
+        if status.can_use_item:
+            for spoil in base_map.spoils:
+                self.road_map[spoil["row"]][spoil["col"]] = 50
+                self.player_map[spoil["row"]][spoil["col"]] = 200
 
 
 @dataclass
 class Player:
     position: [int, int]
+    god_type: int = 0
     lives: int = 5
     score: int = 0
     power: int = 1
@@ -96,5 +124,3 @@ class State:
     has_transform: bool = False
     power: int = 1
     holy_spirit_stone: int = 0
-    is_stun: bool = False
-    is_child: bool = False

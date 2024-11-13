@@ -29,3 +29,13 @@ class NextActionZone(Enum):
     Z2 = [[1, 1], [0, -1], [1, 0], [-1, 0], [0, 1], [0, 0]]
     Z3 = [[1, 1], [0, 1], [-1, 0], [0, -1], [1, 0], [0, 0]]
     Z4 = [[1, 1], [0, -1], [-1, 0], [1, 0], [0, 1], [0, 0]]
+
+
+def get_move_out_zone(region):
+    zone_map = {
+        1: NextMoveZone.Z1.value,
+        2: NextMoveZone.Z2.value,
+        3: NextMoveZone.Z3.value,
+        4: NextMoveZone.Z4.value
+    }
+    return zone_map.get(region, NextMoveZone.Z4.value)
