@@ -14,7 +14,7 @@ def test_euclid_distance_different_points():
 def test_dif_distance_with_target():
     pos_player = [1, 2]
     pos_enemy = [4, 6]
-    target = [8,10]  # Tính sự chênh lệch khoảng cách
+    target = [8, 10]  # Tính sự chênh lệch khoảng cách
     difference = dif_distance_with_target(pos_player, pos_enemy, target)
     print()
     print(euclid_distance(pos_player, target))

@@ -13,6 +13,9 @@ ENEMY = Player(position=[])
 PLAYER_CHILD = Player(position=[])
 ENEMY_CHILD = Player(position=[])
 
+STATUS_PLAYER = StatusPlayer()
+STATUS_ENEMY = StatusPlayer()
+
 
 # PASTE DATA
 def paste_player_data(players):
@@ -61,10 +64,13 @@ def paste_update(data):
     paste_player_data(players=data["map_info"]["players"])
 
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
-    EVALUATED_MAP.set_point_map()
+    EVALUATED_MAP.set_point_map(base_map=MAP,status=STATUS_PLAYER)
 
 
 # EVENT HANDLER
+
+DIRECTION_HIST = []
+
 def ticktack_handler(data):
     pass
 

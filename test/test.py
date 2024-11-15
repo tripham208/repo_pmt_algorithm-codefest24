@@ -3,7 +3,6 @@ from copy import deepcopy
 
 from lib.utils.map import create_map_zero
 
-
 if __name__ == "__main__":
     print(datetime.datetime.now())
     m = create_map_zero(100, 100)
@@ -21,8 +20,6 @@ def vector_direction(A: list, B: list) -> list:
     """
     direction = [B[0] - A[0], B[1] - A[1]]
     return direction
-
-
 
 
 def test_vector_direction():

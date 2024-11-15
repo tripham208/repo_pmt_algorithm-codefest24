@@ -12,6 +12,8 @@ class Map:
     spoils: list
     cols: int = 0
     rows: int = 0
+    pos_enemy: list = None
+    pos_enemy_child: list = None
 
     def get_pos_spoils(self) -> list:
         return [[spoil["row"], spoil["col"]] for spoil in self.spoils]

@@ -1,5 +1,5 @@
 from game.match import SWITCH_WEAPON_ACTION, USE_WEAPON_ACTION
-from lib.utils.generator import gen_action_data
+from lib.utils.emit_generator import gen_action_data
 
 
 def test_gen_action_data():
