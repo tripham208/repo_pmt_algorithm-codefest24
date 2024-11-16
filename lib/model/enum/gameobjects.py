@@ -18,6 +18,9 @@ class Objects(Enum):
     35 - Nine Spur Rooster\n
     36 - Nine Mane Hair Horse\n
     37 - Holy Spirit Stone\n
+
+    custom map\n
+    100 : point destructible\n
     """
 
     MAX_BLOCK = [1, 2, 3, 5]
@@ -26,6 +29,9 @@ class Objects(Enum):
 
     MARRY_ITEM = [32, 33, 34, 35, 36, 37]
     DESTRUCTIBLE = [2, 3]
+
+    BALK = 2
+    BRICK_WALL = 3
 
 
 class Weapon(Enum):

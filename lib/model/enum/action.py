@@ -17,6 +17,12 @@ class FaceAction(Enum):
     LEFT = [0, -1]
 
 
+class Action(Enum):
+    SWITCH_WEAPON = "SWITCH_WEAPON"
+    USE_WEAPON = "USE_WEAPON"
+    MARRY_WIFE = "MARRY_WIFE"
+
+
 class NextMoveZone(Enum):
     Z1 = [[0, 1], [1, 0], [0, -1], [-1, 0]]
     Z2 = [[0, -1], [1, 0], [-1, 0], [0, 1]]
@@ -29,6 +35,13 @@ class NextActionZone(Enum):
     Z2 = [[1, 1], [0, -1], [1, 0], [-1, 0], [0, 1], [0, 0]]
     Z3 = [[1, 1], [0, 1], [-1, 0], [0, -1], [1, 0], [0, 0]]
     Z4 = [[1, 1], [0, -1], [-1, 0], [1, 0], [0, 1], [0, 0]]
+
+
+class Attack(Enum):
+    SWITCH_WEAPON = [5, 5]
+    WOODEN = [1, 1]
+    BOMB = [1, 1]
+    GOD_WEAPON = [3, 3]
 
 
 def get_move_out_zone(region):

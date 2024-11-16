@@ -30,3 +30,28 @@ def test_vector_direction():
     # Xác định hướng của vectơ AB
     direction_AB = vector_direction(A, B)
     print("Hướng của vectơ AB là:", direction_AB)
+
+
+def test_copy():
+    a = [
+        [2, 3],
+        [5, 7]
+    ]
+
+    b = deepcopy(a)
+    b += [[3, 2],[3, 2]]
+    b[1][1] = 1
+    print(a)
+    print(b)
+    cd = a[:]
+    cd[0][0] = 10
+    cd[1] = [4, 4]
+    print(a)
+    print(cd)
+    """
+    [[2, 3], [5, 7]]
+    [[2, 3], [5, 1], [3, 2]]
+    [[10, 3], [5, 7]]
+    [[10, 3], [4, 4]]
+    """
+

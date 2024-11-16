@@ -12,7 +12,7 @@ class AroundRange(Enum):
 
 
 class WeaponRange(Enum):
-    LV1 = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+    WOODEN = [[0, -1], [1, 0], [0, 1], [-1, 0]]
 
     WIND_UP = [[-1, -1], [-1, 0], [-1, 1]]
     WIND_RIGHT = [[-1, 1], [0, 1], [1, 1]]

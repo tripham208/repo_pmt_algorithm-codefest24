@@ -1,5 +1,5 @@
 from game.match import SWITCH_WEAPON_ACTION, USE_WEAPON_ACTION
-from lib.utils.emit_generator import gen_action_data
+from lib.utils.emit_generator import *
 
 
 def test_gen_action_data():
@@ -14,3 +14,8 @@ def test_gen_action_data():
 
     result = gen_action_data("default action")
     assert result == {"action": "default action"}
+
+
+def test_gen_direction():
+    direction = gen_direction([[0, -1], [0, -5], [0, 1]])
+    print(direction)  # "12"

@@ -1,6 +1,9 @@
 import socketio
 
+from lib.alg.astar import a_star_optimized
+from lib.alg.bfs import bfs_dq
 from lib.model.dataclass import *
+from lib.utils.map import euclid_distance
 from match import *
 
 # MAP
@@ -13,8 +16,7 @@ ENEMY = Player(position=[])
 PLAYER_CHILD = Player(position=[])
 ENEMY_CHILD = Player(position=[])
 
-STATUS_PLAYER = StatusPlayer()
-STATUS_ENEMY = StatusPlayer()
+LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[])
 
 
 # PASTE DATA
@@ -64,15 +66,53 @@ def paste_update(data):
     paste_player_data(players=data["map_info"]["players"])
 
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
-    EVALUATED_MAP.set_point_map(base_map=MAP,status=STATUS_PLAYER)
+    EVALUATED_MAP.set_point_map(base_map=MAP, status=STATUS_PLAYER)
 
 
 # EVENT HANDLER
 
 DIRECTION_HIST = []
 
+
 def ticktack_handler(data):
-    pass
+    global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD, STATUS_PLAYER, STATUS_ENEMY
+    global MAP, EVALUATED_MAP
+
+
+def get_case_action() -> tuple[int, dict]:
+    if euclid_distance(PLAYER.position, ENEMY.position) <= 4:
+        return 1, {}
+    '''
+    if PLAYER.power > 1:
+        for pos in AroundRange.LV1.value:
+            if MAP.get_obj_map([sum(i) for i in zip(PLAYER.position, pos)]) == Objects.BALK.value:
+                return 1, {}
+    '''
+    val_pos = EVALUATED_MAP.get_val_road(PLAYER.position)
+
+    if val_pos != 0:
+        return 1, {}
+    else:
+        return 2, {}
+
+
+def get_action(case, param: dict) -> list:
+    """
+    1 -> MAX \n
+    2 -> BFS \n
+    2 -> A STAR \n
+    :param param:
+    :param case:
+    :return:
+    """
+    match case:
+        case 1:
+            pass
+        case 2:
+            return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
+        case 4:
+            return a_star_optimized(start=PLAYER.position, locker=LOCKER, base_map=MAP,
+                                    target=param.get("target", PLAYER.position))
 
 
 # SOCKET HANDLER

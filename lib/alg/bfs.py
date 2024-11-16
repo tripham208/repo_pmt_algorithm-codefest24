@@ -105,19 +105,16 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
     return 0, current_status
 
 
-LEVEL_AROUND = 1
-
-
-def bfs_around_dq(start: list[int], base_map: Map, eval_map: EvaluatedMap) -> bool:
+def bfs_around_dq(start: list[int], base_map: Map, eval_map: EvaluatedMap, level_around: int = 0) -> bool:
     lock_duplicate = {tuple(start)}
 
     acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]))  # get_move_in_zone
-    queue = [[start, 0]]
+    queue = [[start, 0]] # start level_around = 0
     queue = deque(queue)
     result = False
     try:
         point, _ = next_pos_around_dq(actions=acts, lock_duplicate=lock_duplicate, queue=queue,
-                                      base_map=base_map, eval_map=eval_map)
+                                      base_map=base_map, eval_map=eval_map, level_around=level_around)
         if point != 0:
             result = True
     finally:
@@ -125,7 +122,7 @@ def bfs_around_dq(start: list[int], base_map: Map, eval_map: EvaluatedMap) -> bo
 
 
 def next_pos_around_dq(actions: list, lock_duplicate: set, queue: deque, base_map: Map,
-                       eval_map: EvaluatedMap) -> tuple[int, deque]:
+                       eval_map: EvaluatedMap, level_around: int) -> tuple[int, deque]:
     current_status = queue[0]
 
     while queue:
@@ -142,7 +139,7 @@ def next_pos_around_dq(actions: list, lock_duplicate: set, queue: deque, base_ma
 
             point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
 
-            if point == 0 and current_status[1] == LEVEL_AROUND:  # check den round n
+            if point == 0 and current_status[1] == level_around:  # check den round n
                 continue
 
             new_status = deepcopy(current_status)
