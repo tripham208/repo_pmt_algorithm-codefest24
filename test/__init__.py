@@ -6,3 +6,9 @@ def time_function(func, *args):
     result = func(*args)
     end_time = time.time()
     return result, end_time - start_time
+
+def show_map(matrix):
+    print()
+    for i in matrix:
+        print(i)
+    print("")

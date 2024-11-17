@@ -29,6 +29,9 @@ class Objects(Enum):
     BOMB_NO_DESTROY = [1, 3, 5]
     BOMB_BREAK = [1, 2, 3, 5]
 
+    A_STAR_PHASE1_LOCK = [1, 2, 5]
+    A_STAR_PHASE2_LOCK = [1, 5]
+
     MARRY_ITEM = [32, 33, 34, 35, 36, 37]
     DESTRUCTIBLE = [2, 3]
 

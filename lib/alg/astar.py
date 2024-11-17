@@ -45,12 +45,12 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
     lock_duplicate = {tuple(start)}
 
     acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]))
-
+    print(start,target)
     while queue:
         _, current_pos, pos_list, act_list = heappop(queue)
 
         if euclid_distance(current_pos, target) == 1:
-            return act_list
+            return pos_list, act_list
 
         for act in acts:
 
@@ -69,4 +69,4 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
             new_act_list = act_list + [act]
             heappush(queue, (euclid_distance(new_pos_player, target), new_pos_player, new_pos_list, new_act_list))
 
-    return []
+    return [], []

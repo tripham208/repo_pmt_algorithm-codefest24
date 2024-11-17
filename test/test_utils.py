@@ -1,4 +1,4 @@
-from lib.utils.map import euclid_distance, dif_distance_with_target
+from lib.utils.map import euclid_distance, dif_distance_with_target, find_index
 
 map_s1 = [[1, 0], [1, 1]]
 map_s2 = [[2, 0], [2, 2]]
@@ -20,3 +20,15 @@ def test_dif_distance_with_target():
     print(euclid_distance(pos_player, target))
     print(euclid_distance(pos_enemy, target))
     print("Sự chênh lệch khoảng cách là:", difference)
+
+
+
+def test_find_index_exists():
+    matrix = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 6, 9]
+    ]
+    target = 6
+    result = find_index(matrix, target)
+    assert result == [[1, 2], [2, 1]], f"Expected [[1, 2], [2, 1]] but got {result}"

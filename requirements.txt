@@ -1,2 +1,4 @@
 python-socketio
 pytest
+requests
+websocket-client

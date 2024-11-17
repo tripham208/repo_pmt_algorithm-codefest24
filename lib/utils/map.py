@@ -28,3 +28,12 @@ def dif_distance_with_target(pos_player: list, pos_enemy: list, target: list) ->
     player_distance = euclid_distance(pos_player, target)
     enemy_distance = euclid_distance(pos_enemy, target)
     return round(enemy_distance - player_distance, 2)
+
+
+def find_index(matrix, target):
+    badges = []
+    for i, row in enumerate(matrix):
+        for j, value in enumerate(row):
+            if value == target:
+                badges.append([i, j])
+    return badges
