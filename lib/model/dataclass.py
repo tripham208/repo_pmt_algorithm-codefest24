@@ -114,7 +114,6 @@ class EvaluatedMap:
         return self.road_map[pos[0]][pos[1]]
 
     def add_val_road(self, pos, val):
-        print(pos)
         self.road_map[pos[0]][pos[1]] += val
 
     def reset_point_map(self, cols, rows):

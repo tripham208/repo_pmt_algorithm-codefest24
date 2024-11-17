@@ -52,3 +52,12 @@ def get_move_out_zone(region):
         4: NextMoveZone.Z4.value
     }
     return zone_map.get(region, NextMoveZone.Z4.value)
+
+def get_action_zone(region):
+    zone_map = {
+        1: NextActionZone.Z1.value,
+        2: NextActionZone.Z2.value,
+        3: NextActionZone.Z3.value,
+        4: NextActionZone.Z4.value
+    }
+    return zone_map.get(region, NextActionZone.Z4.value)

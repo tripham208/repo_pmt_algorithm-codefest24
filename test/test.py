@@ -40,7 +40,7 @@ def test_copy():
     ]
 
     b = deepcopy(a)
-    b += [[3, 2],[3, 2]]
+    b += [[3, 2], [3, 2]]
     b[1][1] = 1
     print(a)
     print(b)
@@ -56,7 +56,12 @@ def test_copy():
     [[10, 3], [4, 4]]
     """
 
+
 def test_dynamic_val():
-    for i in range(1,4):
+    for i in range(1, 4):
         print()
         print(BombRange[f"LV{i}"].value)
+
+
+def test_pr():
+    print("\033[91m d\033[00m")

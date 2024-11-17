@@ -1,10 +1,17 @@
+import sys
+import time
+
 import socketio
 
 from lib.alg.astar import a_star_optimized
 from lib.alg.bfs import bfs_dq
+from lib.alg.max import max_val
 from lib.model.dataclass import *
+from lib.model.enum.gameobjects import Tag
 from lib.model.enum.range import BombRange
-from lib.utils.map import euclid_distance
+from lib.utils.emit_generator import gen_direction, gen_drive_data
+from lib.utils.map import euclid_distance, find_index
+from lib.utils.printer import pr_green
 from match import *
 
 # MAP
@@ -25,23 +32,25 @@ def paste_player_data(players):
     global PLAYER, ENEMY
 
     for player in players:
-        if player["id"] in PLAYER_ID and not player["isChild"]:
+        print(player)
+        if player["id"] in PLAYER_ID and not player.get("isChild", False):
             PLAYER.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             PLAYER.power = player["power"]
             PLAYER.score = player["score"]
             PLAYER.lives = player["lives"]
+            PLAYER.has_transform = player["hasTransform"]
             if not PLAYER.has_full_marry_items:
                 PLAYER.rice = player["stickyRice"]
                 PLAYER.cake = player["chungCake"]
-                PLAYER.elephant = player["elephant"]
-                PLAYER.rooster = player["rooster"]
-                PLAYER.horse = player["horse"]
+                PLAYER.elephant = player["nineTuskElephant"]
+                PLAYER.rooster = player["nineSpurRooster"]
+                PLAYER.horse = player["nineManeHairHorse"]
                 if PLAYER.owned_marry_items == 5:
                     PLAYER.has_full_marry_items = True
         elif player["id"] in PLAYER_ID and player["isChild"]:
             PLAYER_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             PLAYER_CHILD.power = player["power"]
-        elif player["id"] not in PLAYER_ID and player["isChild"]:
+        elif player["id"] not in PLAYER_ID and player.get("isChild", False):
             ENEMY_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             ENEMY_CHILD.power = player["power"]
         else:
@@ -50,17 +59,16 @@ def paste_player_data(players):
             ENEMY.has_transform = player["hasTransform"]
 
 
-
 def paste_update(data):
     """
 
     :param data:
     :return:
     """
-    global MAP, EVALUATED_MAP
+    global MAP, EVALUATED_MAP, LOCKER
 
     MAP.cols = data["map_info"]["size"]["cols"]
-    MAP.cols = data["map_info"]["size"]["rows"]
+    MAP.rows = data["map_info"]["size"]["rows"]
     MAP.map = data["map_info"]["map"]
     MAP.bombs = data["map_info"]["bombs"]
     MAP.spoils = data["map_info"]["spoils"]
@@ -69,6 +77,13 @@ def paste_update(data):
 
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
     EVALUATED_MAP.set_point_map(base_map=MAP, status=PLAYER)
+
+    lock = get_lock_bombs(base_map=MAP)
+    LOCKER.pos_lock = lock
+    LOCKER.danger_pos_lock_max = lock
+    LOCKER.danger_pos_lock_bfs = lock
+    # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
+
 
 def get_lock_bombs(base_map: Map):
     pos_danger = []
@@ -89,14 +104,78 @@ def get_lock_bombs(base_map: Map):
                 pos_danger.append(pos)
 
     return pos_danger
+
+
 # EVENT HANDLER
 
 DIRECTION_HIST = []
+TIME_POINT = 0
+TIME_POINT_OWN = 0
+ACTION_PER_POINT = 2
+COUNT = 0
+COUNT_UPDATE = 0
+COUNT_ST = 0
+RANGE_TIME = 550
+RANGE_TIME_OWN = 400
+
+
+def set_bonus_point_road(pos_list):
+    global EVALUATED_MAP
+    for pos in pos_list:
+        EVALUATED_MAP.add_val_road(pos, 3 * euclid_distance(PLAYER.position, pos))
+
+
+def set_road_to_badge():
+    global MAP, PLAYER, LOCKER
+    badges = find_index(MAP.map, 6)
+    nearest_badge = []
+    dis = 100
+    for pos in badges:
+        tmp_dis = euclid_distance(PLAYER.position, pos)
+        print(pos, tmp_dis)
+        if dis > tmp_dis:
+            dis = tmp_dis
+            nearest_badge = pos
+            print("choose:",pos, tmp_dis , PLAYER.position)
+    LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value # lock phase 1
+    pos_list, act_list = get_action(case=4, param={"target": nearest_badge})
+    print(pos_list)
+    print(act_list)
+    set_bonus_point_road(pos_list)
 
 
 def ticktack_handler(data):
     global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
     global MAP, EVALUATED_MAP
+    global DIRECTION_HIST, TIME_POINT, TIME_POINT_OWN
+    global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
+
+    print(data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"], "-", TIME_POINT)
+
+    if data.get("player_id", "no id") in PLAYER_ID:
+        TIME_POINT_OWN = data["timestamp"]
+
+    if data["tag"] in Tag.TAG_STOP.value and data["player_id"] in PLAYER_ID:
+        TIME_POINT = data["timestamp"]
+        COUNT += 1
+        print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
+    if (COUNT == ACTION_PER_POINT
+            or data.get("player_id", "no id") in PLAYER_ID and data["timestamp"] - TIME_POINT_OWN > RANGE_TIME_OWN
+            or data["timestamp"] - TIME_POINT > RANGE_TIME):
+        ACTION_PER_POINT = 2
+        TIME_POINT = data["timestamp"]
+
+        paste_update(data)
+
+        if not PLAYER.has_transform:
+            set_road_to_badge()
+
+        act_list = get_action(1)
+
+        direction = gen_direction(act_list)[1:]
+        drive_data = gen_drive_data(direction)
+        print(drive_data)
+        emit_drive(drive_data)
 
 
 def get_case_action() -> tuple[int, dict]:
@@ -116,18 +195,26 @@ def get_case_action() -> tuple[int, dict]:
         return 2, {}
 
 
-def get_action(case, param: dict) -> list:
+def get_action(case, param: dict = None) -> list:
     """
     1 -> MAX \n
     2 -> BFS \n
-    2 -> A STAR \n
+    4 -> A STAR ; {target}\n
     :param param:
     :param case:
     :return:
     """
     match case:
         case 1:
-            pass
+            start_time = time.time()
+            x = max_val(
+                base_map=MAP, evaluated_map=EVALUATED_MAP, locker=LOCKER,
+                player=PLAYER, enemy=ENEMY, player_another=PLAYER_CHILD, enemy_child=ENEMY_CHILD
+            )
+            end_time = time.time()
+            pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
+
+            return x
         case 2:
             return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
         case 4:
