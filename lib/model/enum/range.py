@@ -23,6 +23,7 @@ class WeaponRange(Enum):
 
 
 class BombRange(Enum):
+    LV0 = []
     LV1 = [[0, -1], [1, 0], [0, 1], [-1, 0]]
     LV2 = [
         [[0, -1], [0, -2]],

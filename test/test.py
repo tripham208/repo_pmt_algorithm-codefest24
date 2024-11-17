@@ -1,6 +1,7 @@
 import datetime
 from copy import deepcopy
 
+from lib.model.enum.range import BombRange
 from lib.utils.map import create_map_zero
 
 if __name__ == "__main__":
@@ -55,3 +56,7 @@ def test_copy():
     [[10, 3], [4, 4]]
     """
 
+def test_dynamic_val():
+    for i in range(1,4):
+        print()
+        print(BombRange[f"LV{i}"].value)

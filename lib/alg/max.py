@@ -119,7 +119,7 @@ def attack_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, loc
                 new_base_map.set_val_map(pos_w_atk, 0)
                 new_base_map.up_point += 100
 
-                new_pos_list.append(new_player.position)
+                #new_pos_list.append(new_player.position)
                 new_act_list += [pos_atk, [1, 1]]
 
                 point, tmp_act_list, tmp_pos_list = get_max_val(actions=actions, base_map=new_base_map,
@@ -143,7 +143,7 @@ def attack_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, loc
             new_player.has_bomb = False
             new_base_map.bombs.append(gen_bomb(new_player))
 
-            new_pos_list.append(new_player.position)
+            #new_pos_list.append(new_player.position)
             new_act_list += [[5, 5], [1, 1]]
 
             point, tmp_act_list, tmp_pos_list = get_max_val(actions=actions, base_map=new_base_map,

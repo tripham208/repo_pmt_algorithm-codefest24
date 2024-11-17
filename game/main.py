@@ -3,6 +3,7 @@ import socketio
 from lib.alg.astar import a_star_optimized
 from lib.alg.bfs import bfs_dq
 from lib.model.dataclass import *
+from lib.model.enum.range import BombRange
 from lib.utils.map import euclid_distance
 from match import *
 
@@ -13,10 +14,10 @@ EVALUATED_MAP = EvaluatedMap(player_map=[], enemy_map=[], road_map=[])
 # PLAYER
 PLAYER = Player(position=[])  # [row,col]
 ENEMY = Player(position=[])
-PLAYER_CHILD = Player(position=[])
-ENEMY_CHILD = Player(position=[])
+PLAYER_CHILD = Player(position=[0, 0])
+ENEMY_CHILD = Player(position=[0, 0])
 
-LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[])
+LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[], pos_lock=[])
 
 
 # PASTE DATA
@@ -49,6 +50,7 @@ def paste_player_data(players):
             ENEMY.has_transform = player["hasTransform"]
 
 
+
 def paste_update(data):
     """
 
@@ -66,16 +68,34 @@ def paste_update(data):
     paste_player_data(players=data["map_info"]["players"])
 
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
-    EVALUATED_MAP.set_point_map(base_map=MAP, status=STATUS_PLAYER)
+    EVALUATED_MAP.set_point_map(base_map=MAP, status=PLAYER)
 
+def get_lock_bombs(base_map: Map):
+    pos_danger = []
+    for bomb in base_map.bombs:
+        power = bomb.get("power", 0)
+        bomb_range = BombRange[f'LV{power}'].value
+        pos_danger += [[bomb["row"], bomb["col"]]]
+        is_danger = bomb.get("remainTime", 0) < 1000
 
+        if not is_danger:
+            continue
+
+        for i in bomb_range:
+            for j in i:
+                pos = [[bomb["row"] + j[0]], [bomb["col"] + j[1]]]
+                if base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
+                    break
+                pos_danger.append(pos)
+
+    return pos_danger
 # EVENT HANDLER
 
 DIRECTION_HIST = []
 
 
 def ticktack_handler(data):
-    global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD, STATUS_PLAYER, STATUS_ENEMY
+    global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
     global MAP, EVALUATED_MAP
 
 

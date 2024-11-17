@@ -22,6 +22,7 @@ class Map:
     def set_val_map(self, pos, val):
         self.map[pos[0]][pos[1]] = val
 
+    @property
     def get_pos_spoils(self) -> list:
         return [[spoil["row"], spoil["col"]] for spoil in self.spoils]
 
@@ -82,12 +83,15 @@ class EvaluatedMap:
     enemy_map: list
     road_map: list
 
-    def get_evaluated_map(self, pos_player: list, pos_enemy: list):
+    def get_evaluated_map(self, pos_player: list, pos_enemy: list,
+                          pos_player_child: list, pos_enemy_child: list):
         return sum(
             [
                 self.player_map[pos_player[0]][pos_player[1]],
                 self.road_map[pos_player[0]][pos_player[1]],
-                self.enemy_map[pos_enemy[0]][pos_enemy[1]]
+                self.enemy_map[pos_enemy[0]][pos_enemy[1]],
+                self.player_map[pos_player_child[0]][pos_player_child[1]],
+                self.enemy_map[pos_enemy_child[0]][pos_enemy_child[1]],
             ]
         )
 

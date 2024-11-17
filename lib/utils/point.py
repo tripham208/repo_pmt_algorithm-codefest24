@@ -25,3 +25,8 @@ def get_point_match_need_item(item, need_item: list) -> int:
     else:
         need_item_values = {4: 50, 3: 100, 2: 200, 1: 400}
         return need_item_values.get(len(need_item), 0)
+
+
+def get_point_match_step_bomb(num_step):
+    step_values = {1: -100, 2: -200, 3: -400, 4: -800}
+    return step_values.get(num_step, -3200)

@@ -26,6 +26,8 @@ class Objects(Enum):
     MAX_BLOCK = [1, 2, 3, 5]
     BFS_BLOCK = [1, 2, 3, 5]
     NO_DESTROY = [1, 5]
+    BOMB_NO_DESTROY = [1, 3, 5]
+    BOMB_BREAK = [1, 2, 3, 5]
 
     MARRY_ITEM = [32, 33, 34, 35, 36, 37]
     DESTRUCTIBLE = [2, 3]
@@ -62,7 +64,11 @@ class AnotherItem(Enum):
 
 
 class Tag(Enum):
-    TAG_STOP = ["player:stop-moving", "player:moving-banned", "bomb:setup"]
+    TAG_STOP = [
+        "player:stop-moving",
+        "player:moving-banned",
+        "bomb:setup"
+    ]
 
 
 class Time(Enum):
