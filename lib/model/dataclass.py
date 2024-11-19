@@ -76,6 +76,9 @@ class Locker:
     pos_lock: list  # list pos all player + boms
     a_star_lock: list
 
+    expect_pos: list = None
+    expect_face: int = 0
+
 
 @dataclass
 class EvaluatedMap:

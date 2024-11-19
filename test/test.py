@@ -1,6 +1,7 @@
 import datetime
 from copy import deepcopy
 
+from lib.model.enum.action import FaceAction
 from lib.model.enum.range import BombRange
 from lib.utils.map import create_map_zero
 
@@ -56,6 +57,12 @@ def test_copy():
     [[10, 3], [4, 4]]
     """
 
+    x = b[:]
+    x.remove([3, 2])
+    x.remove([3, 3])
+    print(x)
+    print(b)
+
 
 def test_dynamic_val():
     for i in range(1, 4):
@@ -65,3 +72,9 @@ def test_dynamic_val():
 
 def test_pr():
     print("\033[91m d\033[00m")
+
+def test_compare():
+    print([2,3]==[2,3])
+    print(FaceAction.FACES.value)
+    print(FaceAction.FACES.value[1] == [-1, 0])
+

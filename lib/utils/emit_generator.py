@@ -1,3 +1,6 @@
+from lib.model.enum.action import FaceAction
+
+
 def gen_direction(list_action: list[list]):
     """
     1 - Move LEFT \n
@@ -22,8 +25,22 @@ def gen_direction(list_action: list[list]):
                 direction += "4"
             case [0, 0]:
                 direction += "x"
-            case [1, 1]:
+            case [2, 2]:
                 direction += "b"
+            case [3, 3]:
+                direction += "b"
+            case FaceAction.UP_V2.value:
+                direction += "3"
+                break
+            case FaceAction.RIGHT_V2.value:
+                direction += "2"
+                break
+            case FaceAction.DOWN_V2.value:
+                direction += "4"
+                break
+            case FaceAction.LEFT_V2.value:
+                direction += "1"
+                break
     return direction
 
 

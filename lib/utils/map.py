@@ -1,5 +1,7 @@
 import math
 
+from lib.model.enum.action import Face, FaceAction
+
 
 def create_map_zero(cols: int, rows: int):
     return [[0] * cols for _ in range(rows)]
@@ -37,3 +39,30 @@ def find_index(matrix, target):
             if value == target:
                 badges.append([i, j])
     return badges
+
+
+def get_face(old, new):
+    if old[0] == new[0]:
+        if old[1] > new[1]:
+            return Face.LEFT.value
+        elif old[1] < new[1]:
+            return Face.RIGHT.value
+        else:
+            return Face.UNKNOWN.value
+    elif old[1] == new[1]:
+        if old[0] > new[0]:
+            return Face.UP.value
+        elif old[0] < new[0]:
+            return Face.DOWN.value
+
+
+def get_face_act_v2(act):
+    match act:
+        case [-1, 0]:
+            return FaceAction.UP_V2.value
+        case [0, 1]:
+            return FaceAction.RIGHT_V2.value
+        case [1, 0]:
+            return FaceAction.DOWN_V2.value
+        case [0, -1]:
+            return FaceAction.LEFT_V2.value

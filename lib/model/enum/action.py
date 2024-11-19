@@ -8,6 +8,7 @@ class Face(Enum):
     DOWN = 2
     LEFT = 3
     RIGHT = 4
+    UNKNOWN = 0
 
 
 class FaceAction(Enum):
@@ -15,6 +16,15 @@ class FaceAction(Enum):
     RIGHT = [0, 1]
     DOWN = [1, 0]
     LEFT = [0, -1]
+    UP_V2 = [4, 5]
+    RIGHT_V2 = [5, 6]
+    DOWN_V2 = [6, 5]
+    LEFT_V2 = [5, 4]
+    FACES = [[], UP, DOWN, LEFT, RIGHT]
+    FACES_V2 = [[], UP_V2, DOWN_V2, LEFT_V2, RIGHT_V2]
+
+
+
 
 
 class Action(Enum):
@@ -39,9 +49,11 @@ class NextActionZone(Enum):
 
 class Attack(Enum):
     SWITCH_WEAPON = [5, 5]
-    WOODEN = [1, 1]
-    BOMB = [1, 1]
-    GOD_WEAPON = [3, 3]
+    WOODEN = [2, 2]
+    BOMB = [3, 3]
+    GOD_WEAPON = [4, 4]
+
+    ATTACKS = [WOODEN, BOMB, GOD_WEAPON, SWITCH_WEAPON]
 
 
 def get_move_out_zone(region):
@@ -52,6 +64,7 @@ def get_move_out_zone(region):
         4: NextMoveZone.Z4.value
     }
     return zone_map.get(region, NextMoveZone.Z4.value)
+
 
 def get_action_zone(region):
     zone_map = {

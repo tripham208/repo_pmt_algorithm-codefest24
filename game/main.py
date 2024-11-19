@@ -122,7 +122,7 @@ RANGE_TIME_OWN = 400
 def set_bonus_point_road(pos_list):
     global EVALUATED_MAP
     for pos in pos_list:
-        EVALUATED_MAP.add_val_road(pos, 3 * euclid_distance(PLAYER.position, pos))
+        EVALUATED_MAP.add_val_road(pos, 50 + euclid_distance(PLAYER.position, pos))
 
 
 def set_road_to_badge():
@@ -172,7 +172,7 @@ def ticktack_handler(data):
 
         act_list = get_action(1)
 
-        direction = gen_direction(act_list)[1:]
+        direction = gen_direction(act_list)
         drive_data = gen_drive_data(direction)
         print(drive_data)
         emit_drive(drive_data)
