@@ -132,24 +132,24 @@ def set_road_to_badge():
     dis = 100
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        print(pos, tmp_dis)
+        #print(pos, tmp_dis)
         if dis > tmp_dis:
             dis = tmp_dis
             nearest_badge = pos
-            print("choose:",pos, tmp_dis , PLAYER.position)
     LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value # lock phase 1
     pos_list, act_list = get_action(case=4, param={"target": nearest_badge})
-    print(pos_list)
-    print(act_list)
+    #print(pos_list)
+    #print(act_list)
     set_bonus_point_road(pos_list)
 
+COUNT_STOP = 0
 
 def ticktack_handler(data):
     global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
     global MAP, EVALUATED_MAP
     global DIRECTION_HIST, TIME_POINT, TIME_POINT_OWN
     global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
-
+    global COUNT_STOP
     print(data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"], "-", TIME_POINT)
 
     if data.get("player_id", "no id") in PLAYER_ID:
@@ -173,9 +173,15 @@ def ticktack_handler(data):
         act_list = get_action(1)
 
         direction = gen_direction(act_list)
+        print(act_list)
         drive_data = gen_drive_data(direction)
         print(drive_data)
         emit_drive(drive_data)
+    if COUNT_STOP == 2:
+        sys.exit()
+    else:
+        COUNT_STOP +=1
+
 
 
 def get_case_action() -> tuple[int, dict]:

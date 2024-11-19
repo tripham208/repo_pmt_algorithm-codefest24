@@ -77,4 +77,5 @@ def test_compare():
     print([2,3]==[2,3])
     print(FaceAction.FACES.value)
     print(FaceAction.FACES.value[1] == [-1, 0])
+    print(FaceAction.FACES.value.index([-1, 0]))
 

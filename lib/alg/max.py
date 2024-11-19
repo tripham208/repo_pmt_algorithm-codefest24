@@ -9,7 +9,7 @@ from lib.model.enum.range import WeaponRange
 from lib.utils.map import is_zone, get_face, get_face_act_v2
 from lib.utils.printer import pr_red, pr_green
 
-H = 3
+H = 5
 H_NO_ATTACK_BOMB = 3
 
 
@@ -27,7 +27,9 @@ def max_val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
                                   act_list=act_list)
     if value < point:
         act_list = act
-    pr_red("end max_val:", value, act_list)
+        pos_list = pos
+
+    pr_red(f"end max_val:{point}", act_list)
     return act_list
 
 
@@ -61,7 +63,7 @@ def get_max_val(actions: list, base_map: Map, evaluated_map: EvaluatedMap, locke
             elif action == [0, 0]:
                 point = val(base_map=base_map, evaluated_map=evaluated_map, locker=locker,
                             player=player, enemy=enemy, player_another=player_another, enemy_child=enemy_child,
-                            pos_list=pos_list)
+                            pos_list=pos_list,act_list=act_list)
                 print(f"65 action:{action} level:{level}\033[91m point: {point}\033[00m", value, act_list, pos_list)
                 if value < point:
                     value = point
@@ -116,46 +118,63 @@ def attack_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, loc
 
     pr_green(f"115 level:{level} attack")
     if cur_weapon == 1:
-        if len(pos_list) >= 2:
-            copy_list = [pos for pos in pos_list if pos not in Attack.ATTACKS.value]
-
-            if len(copy_list) >= 2:
-                face = get_face(copy_list[-2], copy_list[-1])
+        if Attack.WOODEN.value in act_list:
+            pass
         else:
-            if locker.expect_pos is not  None and locker.expect_pos == Player.position:
-                face = locker.expect_face
+            if len(pos_list) >= 2:
+                copy_list = [pos for pos in pos_list if pos not in Attack.ATTACKS.value]
 
-        for act_atk in WeaponRange.WOODEN.value:
-            pos_w_atk = [sum(i) for i in zip(player.position, act_atk)]
-            if base_map.get_obj_map(pos_w_atk) == 3:
-                new_base_map = deepcopy(base_map)
-                new_player = deepcopy(player)
-                new_pos_list = deepcopy(pos_list)
-                new_act_list = deepcopy(act_list)
+                if len(copy_list) >= 2:
+                    face = get_face(copy_list[-2], copy_list[-1])
 
-                new_base_map.set_val_map(pos_w_atk, 0)
-                new_base_map.up_point += 100
-                # todo : bị break khi send direction dùng búa
-
-                # new_pos_list.append(new_player.position)
-                if FaceAction.FACES.value[face] == act_atk:
-                    new_act_list.append([2, 2])
+                    print(f"130 level:{level} attack new {face} by {copy_list[-2], copy_list[-1]}")
+            else:
+                if locker.expect_pos is not  None and locker.expect_pos == player.position:
+                    face = locker.expect_face
+                    print(f"130 level:{level} expect_face attack {face}")
                 else:
-                    new_act_list += [get_face_act_v2(act_atk), [2, 2]]
+                    print(f"130 level:{level} expect_face attack UNKNOW")
+            if face == Face.UNKNOWN.value:
+                print(f"130 level:{level} attack UNKNOW return")
+                return value, new_act_list, new_pos_list
 
-                point, tmp_act_list, tmp_pos_list = get_max_val(actions=actions, base_map=new_base_map,
-                                                                evaluated_map=evaluated_map, locker=locker,
-                                                                player=new_player, enemy=enemy,
-                                                                player_another=player_another, enemy_child=enemy_child,
-                                                                level=level + 1,
-                                                                pos_list=new_pos_list,
-                                                                act_list=new_act_list)
+            for act_atk in WeaponRange.WOODEN.value:
+                pos_w_atk = [sum(i) for i in zip(player.position, act_atk)]
+                if base_map.get_obj_map(pos_w_atk) == 3:
+                    new_base_map = deepcopy(base_map)
+                    new_player = deepcopy(player)
+                    new_pos_list = deepcopy(pos_list)
+                    new_act_list = deepcopy(act_list)
 
-                print(f"140 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
-                if value < point:
-                    value = point
-                    new_pos_list = new_pos_list
-                    new_act_list = tmp_act_list
+                    new_base_map.set_val_map(pos_w_atk, 0)
+                    new_base_map.up_point += 300
+                    # todo : bị break khi send direction dùng búa
+
+                    # new_pos_list.append(new_player.position)
+                    if FaceAction.FACES.value[face] == act_atk:
+                        new_act_list.append(Attack.WOODEN.value)
+                    else:
+                        new_act_list += [get_face_act_v2(act_atk), Attack.WOODEN.value]
+
+                    point, tmp_act_list, tmp_pos_list = get_max_val(actions=actions, base_map=new_base_map,
+                                                                    evaluated_map=evaluated_map, locker=locker,
+                                                                    player=new_player, enemy=enemy,
+                                                                    player_another=player_another, enemy_child=enemy_child,
+                                                                    level=level + 1,
+                                                                    pos_list=new_pos_list,
+                                                                    act_list=new_act_list)
+
+                    print(f"140 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                    if value < point:
+                        value = point
+                        new_pos_list = new_pos_list
+                        new_act_list = tmp_act_list
+                        locker.expect_pos = player.position
+                        locker.expect_face = FaceAction.FACES.value.index(act_atk)
+
+                        pr_red(f"set expect pos {locker.expect_pos} expect face {locker.expect_face}" )
+                        #todo : set o day bi change
+
 
         if player.has_bomb and level <= H_NO_ATTACK_BOMB:
             new_base_map = deepcopy(base_map)
@@ -167,7 +186,7 @@ def attack_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, loc
             new_base_map.bombs.append(gen_bomb(new_player))
 
             # new_pos_list.append(new_player.position)
-            new_act_list += [[5, 5], [3, 3]]
+            new_act_list += [Attack.SWITCH_WEAPON.value, Attack.BOMB.value]
 
             point, tmp_act_list, tmp_pos_list = get_max_val(actions=actions, base_map=new_base_map,
                                                             evaluated_map=evaluated_map, locker=locker,
@@ -193,7 +212,7 @@ def attack_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, loc
             new_base_map.bombs.append(gen_bomb(new_player))
 
             new_pos_list.append(new_player.position)
-            new_act_list.append([3, 3])
+            new_act_list.append(Attack.BOMB.value)
 
             point, tmp_act_list, tmp_pos_list = get_max_val(actions=actions, base_map=new_base_map,
                                                             evaluated_map=evaluated_map, locker=locker,
@@ -228,9 +247,9 @@ def attack_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, loc
                 new_base_map.up_point += 100
 
                 if FaceAction.FACES.value[face] == act_atk:
-                    new_act_list.append([2, 2])
+                    new_act_list.append(Attack.WOODEN.value)
                 else:
-                    new_act_list += [get_face_act_v2(act_atk), [2, 2]]
+                    new_act_list += [get_face_act_v2(act_atk), Attack.WOODEN.value]
 
                 new_player.cur_weapon = 1
 
@@ -266,7 +285,7 @@ def move_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, locke
     pr_green(f"235 level:{level} move")
 
     if (not can_go_new_pos(new_pos_player, base_map, locker)
-            or new_pos_player in pos_list):
+            ):
         print(f"240 end:{current_action} level:{level}", act_list, pos_list)
         return StatusPoint.MIN.value, act_list, pos_list
 
@@ -288,7 +307,7 @@ def move_action(actions: list, base_map: Map, evaluated_map: EvaluatedMap, locke
     else:
         point = val(base_map=base_map, evaluated_map=evaluated_map, locker=locker,
                     player=player, enemy=enemy, player_another=player_another, enemy_child=enemy_child,
-                    pos_list=pos_list)
+                    pos_list=pos_list,act_list=act_list)
 
         print(f"260 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
         return point, new_act_list, new_pos_list
