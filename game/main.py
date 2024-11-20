@@ -89,7 +89,7 @@ def get_lock_bombs(base_map: Map):
     pos_danger = []
     for bomb in base_map.bombs:
         power = bomb.get("power", 0)
-        bomb_range = BombRange[f'LV{power}'].value
+        bomb_range = BombRange[f"LV{power}"].value
         pos_danger += [[bomb["row"], bomb["col"]]]
         is_danger = bomb.get("remainTime", 0) < 1000
 
@@ -126,23 +126,27 @@ def set_bonus_point_road(pos_list):
 
 
 def set_road_to_badge():
-    global MAP, PLAYER, LOCKER
+    global MAP, PLAYER, LOCKER,EVALUATED_MAP
     badges = find_index(MAP.map, 6)
     nearest_badge = []
     dis = 100
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        #print(pos, tmp_dis)
+        EVALUATED_MAP.add_val_road(pos, 300)
+
+        # print(pos, tmp_dis)
         if dis > tmp_dis:
             dis = tmp_dis
             nearest_badge = pos
-    LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value # lock phase 1
+    LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value  # lock phase 1
     pos_list, act_list = get_action(case=4, param={"target": nearest_badge})
-    #print(pos_list)
-    #print(act_list)
+    # print(pos_list)
+    # print(act_list)
     set_bonus_point_road(pos_list)
 
+
 COUNT_STOP = 0
+
 
 def ticktack_handler(data):
     global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
@@ -159,9 +163,12 @@ def ticktack_handler(data):
         TIME_POINT = data["timestamp"]
         COUNT += 1
         print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
-    if (COUNT == ACTION_PER_POINT
-            or data.get("player_id", "no id") in PLAYER_ID and data["timestamp"] - TIME_POINT_OWN > RANGE_TIME_OWN
-            or data["timestamp"] - TIME_POINT > RANGE_TIME):
+    if (
+        COUNT == ACTION_PER_POINT
+        or data.get("player_id", "no id") in PLAYER_ID
+        and data["timestamp"] - TIME_POINT_OWN > RANGE_TIME_OWN
+        or data["timestamp"] - TIME_POINT > RANGE_TIME
+    ):
         ACTION_PER_POINT = 2
         TIME_POINT = data["timestamp"]
 
@@ -180,19 +187,18 @@ def ticktack_handler(data):
     if COUNT_STOP == 2:
         sys.exit()
     else:
-        COUNT_STOP +=1
-
+        COUNT_STOP += 0
 
 
 def get_case_action() -> tuple[int, dict]:
     if euclid_distance(PLAYER.position, ENEMY.position) <= 4:
         return 1, {}
-    '''
+    """
     if PLAYER.power > 1:
         for pos in AroundRange.LV1.value:
             if MAP.get_obj_map([sum(i) for i in zip(PLAYER.position, pos)]) == Objects.BALK.value:
                 return 1, {}
-    '''
+    """
     val_pos = EVALUATED_MAP.get_val_road(PLAYER.position)
 
     if val_pos != 0:
@@ -214,8 +220,13 @@ def get_action(case, param: dict = None) -> list:
         case 1:
             start_time = time.time()
             x = max_val(
-                base_map=MAP, evaluated_map=EVALUATED_MAP, locker=LOCKER,
-                player=PLAYER, enemy=ENEMY, player_another=PLAYER_CHILD, enemy_child=ENEMY_CHILD
+                base_map=MAP,
+                evaluated_map=EVALUATED_MAP,
+                locker=LOCKER,
+                player=PLAYER,
+                enemy=ENEMY,
+                player_another=PLAYER_CHILD,
+                enemy_child=ENEMY_CHILD,
             )
             end_time = time.time()
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
@@ -224,8 +235,9 @@ def get_action(case, param: dict = None) -> list:
         case 2:
             return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
         case 4:
-            return a_star_optimized(start=PLAYER.position, locker=LOCKER, base_map=MAP,
-                                    target=param.get("target", PLAYER.position))
+            return a_star_optimized(
+                start=PLAYER.position, locker=LOCKER, base_map=MAP, target=param.get("target", PLAYER.position)
+            )
 
 
 # SOCKET HANDLER

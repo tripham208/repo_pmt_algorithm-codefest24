@@ -66,4 +66,3 @@ def get_face_act_v2(act):
             return FaceAction.DOWN_V2.value
         case [0, -1]:
             return FaceAction.LEFT_V2.value
-

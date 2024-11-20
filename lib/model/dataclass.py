@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from lib.model.enum.gameobjects import MarryItem, Objects
+from lib.model.enum.point import StatusPoint
 from lib.model.enum.range import AroundRange
 from lib.utils.map import create_map_zero
 
@@ -75,7 +76,7 @@ class Locker:
     danger_pos_lock_bfs: list
     pos_lock: list  # list pos all player + boms
     a_star_lock: list
-
+    # use for checkpoint
     expect_pos: list = None
     expect_face: int = 0
 
@@ -150,3 +151,15 @@ class EvaluatedMap:
             for spoil in base_map.spoils:
                 self.road_map[spoil["row"]][spoil["col"]] = 50
                 self.player_map[spoil["row"]][spoil["col"]] = 200
+
+
+@dataclass()
+class ValResponse:
+    pos_list: list
+    act_list: list
+    value: int = StatusPoint.MIN.value
+
+    expect_pos: list = None
+    expect_face: int = 0
+
+
