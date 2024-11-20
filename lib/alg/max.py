@@ -9,7 +9,7 @@ from lib.model.enum.range import WeaponRange
 from lib.utils.map import is_zone, get_face, get_face_act_v2
 from lib.utils.printer import pr_red, pr_green
 
-H = 5
+H = 4
 H_NO_ATTACK_BOMB = 3
 
 
@@ -105,13 +105,13 @@ def get_max_val(
                     act_list=act_list,
                 )
                 print(
-                    f"65 action:{action} level:{level}\033[91m point: {point}\033[00m",
+                    f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m",
                     response.value,
                     response.act_list,
                     response.pos_list,
                 )
                 if response.value < point:
-                    response.value = point
+                    response = ValResponse(pos_list=pos_list, act_list=act_list, value=point)
                     response.act_list.append(action)
             else:
                 tmp_response = move_action(

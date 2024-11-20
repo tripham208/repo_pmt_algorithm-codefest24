@@ -7,3 +7,4 @@ class StatusPoint(Enum):
     WARNING = -1000
     DESTROY = 500
     PENALTY = -5000
+    BADGE = 500

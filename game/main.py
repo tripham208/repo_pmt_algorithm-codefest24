@@ -11,7 +11,7 @@ from lib.model.enum.gameobjects import Tag
 from lib.model.enum.range import BombRange
 from lib.utils.emit_generator import gen_direction, gen_drive_data
 from lib.utils.map import euclid_distance, find_index
-from lib.utils.printer import pr_green
+from lib.utils.printer import pr_green, pr_yellow
 from match import *
 
 # MAP
@@ -84,6 +84,8 @@ def paste_update(data):
     LOCKER.danger_pos_lock_bfs = lock
     # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
 
+    pr_yellow(f"spoil {MAP.spoils}")
+
 
 def get_lock_bombs(base_map: Map):
     pos_danger = []
@@ -132,7 +134,7 @@ def set_road_to_badge():
     dis = 100
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        EVALUATED_MAP.add_val_road(pos, 300)
+        EVALUATED_MAP.add_val_road(pos, StatusPoint.BADGE.value)
 
         # print(pos, tmp_dis)
         if dis > tmp_dis:
@@ -184,10 +186,10 @@ def ticktack_handler(data):
         drive_data = gen_drive_data(direction)
         print(drive_data)
         emit_drive(drive_data)
-    if COUNT_STOP == 2:
+    if COUNT_STOP == 3:
         sys.exit()
     else:
-        COUNT_STOP += 0
+        COUNT_STOP += 1
 
 
 def get_case_action() -> tuple[int, dict]:
