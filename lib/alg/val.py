@@ -50,9 +50,9 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
             value += StatusPoint.WARNING.value
         if player_another.position in pos_warning:
             value += StatusPoint.WARNING.value
-        if enemy.position in pos_danger or enemy.position in pos_warning:
+        if (enemy.position in pos_danger or enemy.position in pos_warning) and not enemy.is_tsun:
             value += 1000
-        if enemy_child.position in pos_danger or enemy_child.position in pos_warning:
+        if (enemy_child.position in pos_danger or enemy_child.position in pos_warning) and not enemy_child.is_tsun:
             value += 1000
         # bonus - optimize step in bomb range
         if pos_list:

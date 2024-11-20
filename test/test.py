@@ -80,3 +80,13 @@ def test_compare():
     print(FaceAction.FACES.value.index([-1, 0]))
     print(None == [1,1])
 
+def test_a():
+    a = "hello worldllllll"
+    def b():
+        nonlocal a
+        print(a)
+        c="aaaaaaaaa"
+        a="hello world"
+    b()
+    #print(c) error
+    print(a)

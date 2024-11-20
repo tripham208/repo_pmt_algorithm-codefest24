@@ -7,9 +7,10 @@ from lib.alg.astar import a_star_optimized
 from lib.alg.bfs import bfs_dq
 from lib.alg.max import max_val
 from lib.model.dataclass import *
+from lib.model.enum.action import Attack, Action
 from lib.model.enum.gameobjects import Tag
 from lib.model.enum.range import BombRange
-from lib.utils.emit_generator import gen_direction, gen_drive_data
+from lib.utils.emit_generator import gen_direction, gen_drive_data, gen_action_data
 from lib.utils.map import euclid_distance, find_index
 from lib.utils.printer import pr_green, pr_yellow
 from match import *
@@ -89,11 +90,19 @@ def paste_update(data):
 
 def get_lock_bombs(base_map: Map):
     pos_danger = []
+    PLAYER.has_bomb = False
+    PLAYER_CHILD.has_bomb = False
     for bomb in base_map.bombs:
         power = bomb.get("power", 0)
         bomb_range = BombRange[f"LV{power}"].value
         pos_danger += [[bomb["row"], bomb["col"]]]
         is_danger = bomb.get("remainTime", 0) < 1000
+
+        if bomb.get("playerId") in PLAYER_ID:
+            if power == 1:
+                PLAYER_CHILD.has_bomb = False
+            else:
+                PLAYER.has_bomb = False
 
         if not is_danger:
             continue
@@ -124,11 +133,11 @@ RANGE_TIME_OWN = 400
 def set_bonus_point_road(pos_list):
     global EVALUATED_MAP
     for pos in pos_list:
-        EVALUATED_MAP.add_val_road(pos, 50 + euclid_distance(PLAYER.position, pos))
+        EVALUATED_MAP.add_val_road(pos, 100 + euclid_distance(PLAYER.position, pos))
 
 
 def set_road_to_badge():
-    global MAP, PLAYER, LOCKER,EVALUATED_MAP
+    global MAP, PLAYER, LOCKER, EVALUATED_MAP
     badges = find_index(MAP.map, 6)
     nearest_badge = []
     dis = 100
@@ -166,10 +175,10 @@ def ticktack_handler(data):
         COUNT += 1
         print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
     if (
-        COUNT == ACTION_PER_POINT
-        or data.get("player_id", "no id") in PLAYER_ID
-        and data["timestamp"] - TIME_POINT_OWN > RANGE_TIME_OWN
-        or data["timestamp"] - TIME_POINT > RANGE_TIME
+            COUNT == ACTION_PER_POINT
+            or data.get("player_id", "no id") in PLAYER_ID
+            and data["timestamp"] - TIME_POINT_OWN > RANGE_TIME_OWN
+            or data["timestamp"] - TIME_POINT > RANGE_TIME
     ):
         ACTION_PER_POINT = 2
         TIME_POINT = data["timestamp"]
@@ -185,8 +194,10 @@ def ticktack_handler(data):
         print(act_list)
         drive_data = gen_drive_data(direction)
         print(drive_data)
+        if Attack.SWITCH_WEAPON.value in act_list:
+            emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value))
         emit_drive(drive_data)
-    if COUNT_STOP == 3:
+    if COUNT_STOP == 1:
         sys.exit()
     else:
         COUNT_STOP += 1
