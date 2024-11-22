@@ -40,7 +40,11 @@ def paste_player_data(players):
             PLAYER.score = player["score"]
             PLAYER.lives = player["lives"]
             PLAYER.has_transform = player["hasTransform"]
-            if not PLAYER.has_full_marry_items:
+            PLAYER.cur_weapon = player["currentWeapon"]
+            PLAYER.owner_weapon = player["ownerWeapon"]
+            if PLAYER.has_transform:
+                PLAYER.transform_type = player["transformType"]
+            if not PLAYER.has_full_marry_items and PLAYER.has_transform:
                 PLAYER.rice = player["stickyRice"]
                 PLAYER.cake = player["chungCake"]
                 PLAYER.elephant = player["nineTuskElephant"]
@@ -90,8 +94,8 @@ def paste_update(data):
 
 def get_lock_bombs(base_map: Map):
     pos_danger = []
-    PLAYER.has_bomb = False
-    PLAYER_CHILD.has_bomb = False
+    PLAYER.has_bomb = True
+    PLAYER_CHILD.has_bomb = True
     for bomb in base_map.bombs:
         power = bomb.get("power", 0)
         bomb_range = BombRange[f"LV{power}"].value
@@ -109,7 +113,7 @@ def get_lock_bombs(base_map: Map):
 
         for i in bomb_range:
             for j in i:
-                pos = [[bomb["row"] + j[0]], [bomb["col"] + j[1]]]
+                pos = [bomb["row"] + j[0], bomb["col"] + j[1]]
                 if base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
                     break
                 pos_danger.append(pos)
@@ -130,33 +134,39 @@ RANGE_TIME = 550
 RANGE_TIME_OWN = 400
 
 
-def set_bonus_point_road(pos_list):
+def set_bonus_point_road(pos_list, x: int):
     global EVALUATED_MAP
     for pos in pos_list:
-        EVALUATED_MAP.add_val_road(pos, 100 + euclid_distance(PLAYER.position, pos))
+        EVALUATED_MAP.set_val_road(pos, euclid_distance(PLAYER.position, pos) * x)
 
 
 def set_road_to_badge():
     global MAP, PLAYER, LOCKER, EVALUATED_MAP
     badges = find_index(MAP.map, 6)
+    pr_yellow(badges)
     nearest_badge = []
     dis = 100
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        EVALUATED_MAP.add_val_road(pos, StatusPoint.BADGE.value)
+        EVALUATED_MAP.set_val_road(pos, StatusPoint.BADGE.value)
 
         # print(pos, tmp_dis)
         if dis > tmp_dis:
             dis = tmp_dis
             nearest_badge = pos
     LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value  # lock phase 1
-    pos_list, act_list = get_action(case=4, param={"target": nearest_badge})
+    act_list, pos_list = get_action(case=4, param={"target": nearest_badge})
     # print(pos_list)
     # print(act_list)
-    set_bonus_point_road(pos_list)
+    set_bonus_point_road(pos_list, 100)
 
 
 COUNT_STOP = 0
+
+
+def set_road_to_point():
+    act_list, pos_list = get_action(case=2)
+    set_bonus_point_road(pos_list, 50)
 
 
 def ticktack_handler(data):
@@ -187,7 +197,8 @@ def ticktack_handler(data):
 
         if not PLAYER.has_transform:
             set_road_to_badge()
-
+        if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
+            set_road_to_point()
         act_list = get_action(1)
 
         direction = gen_direction(act_list)
@@ -196,11 +207,12 @@ def ticktack_handler(data):
         print(drive_data)
         if Attack.SWITCH_WEAPON.value in act_list:
             emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value))
+            pass
         emit_drive(drive_data)
-    if COUNT_STOP == 1:
+    if COUNT_STOP == 2:
         sys.exit()
     else:
-        COUNT_STOP += 1
+        COUNT_STOP += 0
 
 
 def get_case_action() -> tuple[int, dict]:

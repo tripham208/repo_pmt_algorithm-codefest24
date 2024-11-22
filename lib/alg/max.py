@@ -6,8 +6,8 @@ from lib.model.dataclass import *
 from lib.model.enum.action import get_action_zone, Face, FaceAction, Attack
 from lib.model.enum.point import StatusPoint
 from lib.model.enum.range import WeaponRange
-from lib.utils.map import is_zone, get_face, get_face_act_v2
-from lib.utils.printer import pr_red, pr_green
+from lib.utils.map import is_zone, get_face, get_face_act_v2, check_have_attack
+from lib.utils.printer import pr_red, pr_green, pr_yellow
 
 H = 4
 H_NO_ATTACK_BOMB = 3
@@ -67,81 +67,77 @@ def get_max_val(
     response = ValResponse(pos_list=pos_list, act_list=act_list)
     print(f"70 get_max_val level:{level}")
 
-    try:
-        for action in actions:
-            if action == [1, 1]:
-                tmp_response = attack_action(
-                    actions=actions,
-                    base_map=base_map,
-                    evaluated_map=evaluated_map,
-                    locker=locker,
-                    player=player,
-                    enemy=enemy,
-                    player_another=player_another,
-                    enemy_child=enemy_child,
-                    level=level,
-                    pos_list=pos_list,
-                    act_list=act_list,
-                )
-                print(
-                    f"90 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m",
-                    tmp_response.act_list,
-                    tmp_response.pos_list,
-                )
-                if response.value < tmp_response.value:
-                    response = tmp_response
+    for action in actions:
+        if action == [1, 1]:
+            if check_have_attack(act_list=act_list):
+                continue
+            tmp_response = attack_action(
+                actions=actions,
+                base_map=base_map,
+                evaluated_map=evaluated_map,
+                locker=locker,
+                player=player,
+                enemy=enemy,
+                player_another=player_another,
+                enemy_child=enemy_child,
+                level=level,
+                pos_list=pos_list,
+                act_list=act_list,
+            )
+            print(
+                f"90 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m",
+                tmp_response.act_list,
+                tmp_response.pos_list,
+            )
+            if response.value < tmp_response.value:
+                response = tmp_response
 
-            elif action == [0, 0]:
-                point = val(
-                    base_map=base_map,
-                    evaluated_map=evaluated_map,
-                    locker=locker,
-                    player=player,
-                    enemy=enemy,
-                    player_another=player_another,
-                    enemy_child=enemy_child,
-                    pos_list=pos_list,
-                    act_list=act_list,
-                )
-                print(
-                    f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m",
-                    response.value,
-                    response.act_list,
-                    response.pos_list,
-                )
-                if response.value < point:
-                    response = ValResponse(pos_list=pos_list, act_list=act_list, value=point)
-                    response.act_list.append(action)
-            else:
-                tmp_response = move_action(
-                    actions=actions,
-                    base_map=base_map,
-                    evaluated_map=evaluated_map,
-                    locker=locker,
-                    player=player,
-                    enemy=enemy,
-                    player_another=player_another,
-                    enemy_child=enemy_child,
-                    level=level,
-                    pos_list=pos_list,
-                    act_list=act_list,
-                    current_action=action,
-                )
-                print(
-                    f"130 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m",
-                    response.value,
-                    tmp_response.act_list,
-                    tmp_response.pos_list,
-                )
-                if response.value < tmp_response.value:
-                    response = tmp_response
-            print(f"140 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
-
-    except Exception as e:
-        pr_red(e)
-    finally:
-        return response
-
+        elif action == [0, 0]:
+            point = val(
+                base_map=base_map,
+                evaluated_map=evaluated_map,
+                locker=locker,
+                player=player,
+                enemy=enemy,
+                player_another=player_another,
+                enemy_child=enemy_child,
+                pos_list=pos_list,
+                act_list=act_list,
+            )
+            pr_yellow(
+                f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m",
+                response.value,
+                response.act_list,
+                response.pos_list,
+            )
+            if response.value < point:
+                response = ValResponse(pos_list=pos_list, act_list=act_list, value=point)
+                response.act_list.append(action)
+        else:
+            tmp_response = move_action(
+                actions=actions,
+                base_map=base_map,
+                evaluated_map=evaluated_map,
+                locker=locker,
+                player=player,
+                enemy=enemy,
+                player_another=player_another,
+                enemy_child=enemy_child,
+                level=level,
+                pos_list=pos_list,
+                act_list=act_list,
+                current_action=action,
+            )
+            print(
+                f"130 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m",
+                response.value,
+                tmp_response.act_list,
+                tmp_response.pos_list,
+            )
+            if response.value < tmp_response.value:
+                response = tmp_response
+        print(f"140 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
+    return response
 
 def gen_bomb(player: Player):
     return {
@@ -173,7 +169,7 @@ def attack_action(
     def wooden_attack():
         nonlocal face, response, pos_list, act_list, base_map, level, locker, actions, evaluated_map, cur_weapon
         nonlocal player, enemy, player_another, enemy_child
-
+        pr_yellow("wooden_attack")
         if len(pos_list) >= 2:
             copy_list = [pos for pos in pos_list if pos not in Attack.ATTACKS.value]
 
@@ -184,8 +180,6 @@ def attack_action(
             if locker.expect_pos == player.position:
                 face = locker.expect_face
                 print(f"190 level:{level} expect_face attack {face}")
-            else:
-                print(f"130 level:{level} expect_face attack UNKNOW")
         if face == Face.UNKNOWN.value:
             print(f"130 level:{level} attack UNKNOW return")
             return
@@ -231,6 +225,7 @@ def attack_action(
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
 
+        pr_yellow("bomb_attack")
         new_base_map = deepcopy(base_map)
         new_player = deepcopy(player)
         new_pos_list = deepcopy(pos_list)
@@ -241,9 +236,10 @@ def attack_action(
 
         if cur_weapon == 1:
             new_act_list.append(Attack.SWITCH_WEAPON.value)
+            new_player.cur_weapon = 2
 
         # new_pos_list.append(new_player.position)
-        new_act_list += [Attack.SWITCH_WEAPON.value, Attack.BOMB.value]
+        new_act_list.append(Attack.BOMB.value)
 
         tmp_response = get_max_val(
             actions=actions,
@@ -338,7 +334,7 @@ def move_action(
             base_map=base_map,
             evaluated_map=evaluated_map,
             locker=locker,
-            player=player,
+            player=new_player,
             enemy=enemy,
             player_another=player_another,
             enemy_child=enemy_child,

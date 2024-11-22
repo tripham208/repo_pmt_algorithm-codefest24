@@ -12,13 +12,14 @@ def calculate_bombs(base_map: Map):
     pos_warning = []
     for bomb in base_map.bombs:
         power = bomb.get("power", 0)
+
         bomb_range = BombRange[f'LV{power}'].value
         pos_danger += [[bomb["row"], bomb["col"]]]
         is_warning = bomb.get("remainTime", 0) > 1000
 
         for i in bomb_range:
             for j in i:
-                pos = [[bomb["row"] + j[0]], [bomb["col"] + j[1]]]
+                pos = [bomb["row"] + j[0], bomb["col"] + j[1]]
                 if base_map.get_obj_map(pos) == 2:
                     if bomb.get("playerId") in PLAYER_ID:
                         point += 500
@@ -35,12 +36,14 @@ def calculate_bombs(base_map: Map):
 
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         player: Player, enemy: Player, player_another: Player, enemy_child: Player, pos_list, act_list) -> int:
-    value = evaluated_map.get_evaluated_map(pos_player=player.position, pos_enemy=enemy.position,
+    evaluated_map_point = evaluated_map.get_evaluated_map(pos_player=player.position, pos_enemy=enemy.position,
                                             pos_enemy_child=enemy_child.position,
                                             pos_player_child=player_another.position)
+    value = evaluated_map_point
     value += base_map.up_point
     point, pos_danger, pos_warning = calculate_bombs(base_map)
     value += point
+    bonus = 0
     if base_map.bombs:
         if player.position in pos_danger:
             value += StatusPoint.DANGER.value
@@ -58,15 +61,19 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         if pos_list:
             for idx, x in enumerate(pos_list, start=1):
                 if x in pos_danger:
-                    value += get_point_match_step_bomb(idx)
+                    bonus += get_point_match_step_bomb(idx)
     # bonus - optimize step pick spoil
+
     if pos_list:
         for idx, x in enumerate(pos_list, start=1):
             if x in base_map.get_pos_spoils:
-                value += get_point_match_step_spoil(idx)
-                value += 200
+                bonus += get_point_match_step_spoil(idx)
+                bonus += 200
+
     for i in act_list:
         if i in FaceAction.FACES_V2.value:
-            value -= 100
+            bonus -= 100
+    value += bonus
+    print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus}",)
 
     return value

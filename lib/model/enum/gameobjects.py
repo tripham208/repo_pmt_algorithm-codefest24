@@ -32,7 +32,7 @@ class Objects(Enum):
     A_STAR_PHASE1_LOCK = [1, 2, 5]
     A_STAR_PHASE2_LOCK = [1, 5]
 
-    MARRY_ITEM = [32, 33, 34, 35, 36, 37]
+    MARRY_ITEM = [32, 33, 34, 35, 36]
     DESTRUCTIBLE = [2, 3]
 
     BALK = 2

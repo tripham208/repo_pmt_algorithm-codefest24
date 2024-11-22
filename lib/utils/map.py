@@ -1,6 +1,6 @@
 import math
 
-from lib.model.enum.action import Face, FaceAction
+from lib.model.enum.action import Face, FaceAction, Attack
 
 
 def create_map_zero(cols: int, rows: int):
@@ -66,3 +66,9 @@ def get_face_act_v2(act):
             return FaceAction.DOWN_V2.value
         case [0, -1]:
             return FaceAction.LEFT_V2.value
+
+def check_have_attack(act_list) -> bool:
+    for act in act_list:
+        if act in Attack.ATTACKS.value:
+            return True
+    return False

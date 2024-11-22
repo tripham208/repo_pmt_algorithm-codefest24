@@ -50,7 +50,7 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
         _, current_pos, pos_list, act_list = heappop(queue)
 
         if euclid_distance(current_pos, target) == 1:
-            return pos_list, act_list
+            return act_list, pos_list
 
         for act in acts:
 

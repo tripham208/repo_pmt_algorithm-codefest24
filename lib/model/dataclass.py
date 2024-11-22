@@ -89,6 +89,12 @@ class EvaluatedMap:
 
     def get_evaluated_map(self, pos_player: list, pos_enemy: list,
                           pos_player_child: list, pos_enemy_child: list):
+        # print(pos_player, "-player_map-",  self.player_map[pos_player[0]][pos_player[1]])
+        # print(pos_player, "-road_map-",  self.road_map[pos_player[0]][pos_player[1]])
+        # print(pos_enemy, "-enemy_map-",  self.enemy_map[pos_enemy[0]][pos_enemy[1]])
+        # print(pos_player_child, "-player_map-",  self.player_map[pos_player_child[0]][pos_player_child[1]])
+        # print(pos_enemy_child, "-enemy_map-",  self.enemy_map[pos_enemy_child[0]][pos_enemy_child[1]])
+
         return sum(
             [
                 self.player_map[pos_player[0]][pos_player[1]],
@@ -119,6 +125,9 @@ class EvaluatedMap:
 
     def add_val_road(self, pos, val):
         self.road_map[pos[0]][pos[1]] += val
+
+    def set_val_road(self, pos, val):
+        self.road_map[pos[0]][pos[1]] = val
 
     def reset_point_map(self, cols, rows):
         self.player_map = create_map_zero(cols, rows)

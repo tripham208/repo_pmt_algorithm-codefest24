@@ -58,20 +58,20 @@ def next_pos_bfs(actions: list, lock_duplicate: set, queue: list[list], locker: 
                         locker=locker, base_map=base_map, eval_map=eval_map)
 
 
-def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap) -> list[int]:
+def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap):
     lock_duplicate = {tuple(start)}
 
     acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]))
-    queue = [[start, []]]  # current pos , action to pos
+    start_status = [start, [], []]
+    queue = [start_status]  # current pos , action to pos , pos to pos
     queue = deque(queue)
-    act_list = []
-    try:
-        point, end_status = next_pos_bfs_dq(actions=acts, lock_duplicate=lock_duplicate, queue=queue,
-                                            locker=locker, base_map=base_map, eval_map=eval_map)
-        if point >= 25:
-            act_list = end_status[1]
-    finally:
-        return act_list
+
+    point, end_status = next_pos_bfs_dq(actions=acts, lock_duplicate=lock_duplicate, queue=queue,
+                                        locker=locker, base_map=base_map, eval_map=eval_map)
+    if point >= 25:
+        start_status = end_status
+
+    return start_status[1], start_status[2]
 
 
 def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Locker, base_map: Map,
@@ -94,6 +94,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
 
             new_status = deepcopy(current_status)
             new_status[1].append(act)
+            new_status[2].append(new_pos_player)
             new_status[0] = new_pos_player
             lock_duplicate.add(new_pos_tuple)
 
@@ -109,7 +110,7 @@ def bfs_around_dq(start: list[int], base_map: Map, eval_map: EvaluatedMap, level
     lock_duplicate = {tuple(start)}
 
     acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]))  # get_move_in_zone
-    queue = [[start, 0]] # start level_around = 0
+    queue = [[start, 0]]  # start level_around = 0
     queue = deque(queue)
     result = False
     try:
