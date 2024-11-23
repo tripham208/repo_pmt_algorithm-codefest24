@@ -88,6 +88,7 @@ def get_info_action(act_list) -> dict:
             break
         if act in FaceAction.FACES_V2.value:
             output["reface"] = True
+            index += 1
         if act in Attack.BASIC_ATTACKS.value:
             output["attack"] = act
         elif act == Attack.SWITCH_WEAPON.value:
@@ -98,3 +99,4 @@ def get_info_action(act_list) -> dict:
             index += 1
     output["drop"] = index
     return output
+

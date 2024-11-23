@@ -47,14 +47,14 @@ class StatusPoint(Enum):
     # position
     BADGE = 2000
     DANGER = -10000
-    WARNING = -1000
+    WARNING = -2000
 
     # object
     BRICK_WALL = 300
     BALK = 500
 
     # bonus
-    BADGE_NEAR = 1000
+    BOMB_ENEMY = 1000
 
 
 class Weapon(Enum):

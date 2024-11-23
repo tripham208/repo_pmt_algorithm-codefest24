@@ -76,6 +76,9 @@ class Locker:
     danger_pos_lock_bfs: list
     pos_lock: list  # list pos all player + boms
     a_star_lock: list
+
+    warning_pos_bfs: list = None
+    warning_pos_max: list = None
     # use for checkpoint
     expect_pos: list = None
     expect_face: int = 0

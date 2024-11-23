@@ -60,6 +60,7 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
             if (
                     new_pos_player in locker.danger_pos_lock_bfs
                     or base_map.map[new_pos_player[0]][new_pos_player[1]] in locker.a_star_lock
+                    or new_pos_player in locker.pos_lock
                     or new_pos_lock in lock_duplicate
             ):
                 continue

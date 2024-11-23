@@ -1,5 +1,4 @@
 import sys
-import time
 
 import socketio
 
@@ -8,11 +7,11 @@ from lib.alg.bfs import bfs_dq
 from lib.alg.max import max_val
 from lib.model.dataclass import *
 from lib.model.enum.action import Action
-from lib.model.enum.gameobjects import Tag, StatusPoint
+from lib.model.enum.gameobjects import Tag
 from lib.model.enum.range import BombRange
 from lib.utils.emit_generator import gen_direction, gen_drive_data, gen_action_data
 from lib.utils.map import euclid_distance, find_index, get_info_action
-from lib.utils.printer import pr_green, pr_yellow
+from lib.utils.printer import pr_green, pr_yellow, pr_red
 from match import *
 
 # MAP
@@ -86,18 +85,21 @@ def paste_update(data):
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
     EVALUATED_MAP.set_point_map(base_map=MAP, status=PLAYER)
 
-    lock = get_lock_bombs(base_map=MAP)
-    LOCKER.pos_lock = lock
-    LOCKER.danger_pos_lock_max = lock
-    LOCKER.danger_pos_lock_bfs = lock
+    lock_danger, pos_warning = get_lock_bombs(base_map=MAP)
+    LOCKER.pos_lock = lock_danger + [PLAYER_CHILD.position, ENEMY.position, ENEMY_CHILD.position]
+    LOCKER.danger_pos_lock_max = lock_danger
+    LOCKER.danger_pos_lock_bfs = lock_danger
+    LOCKER.warning_pos_bfs = pos_warning
+    LOCKER.warning_pos_max = pos_warning
     # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
 
     pr_yellow(f"spoil {MAP.spoils}")
-    pr_yellow(f"spoil {MAP.bombs}")
+    pr_yellow(f"bombs {MAP.bombs}")
 
 
 def get_lock_bombs(base_map: Map):
     pos_danger = []
+    pos_warning = []
     PLAYER.has_bomb = True
     PLAYER_CHILD.has_bomb = True
     for bomb in base_map.bombs:
@@ -105,6 +107,7 @@ def get_lock_bombs(base_map: Map):
         bomb_range = BombRange[f"LV{power}"].value
         pos_danger += [[bomb["row"], bomb["col"]]]
         is_danger = bomb.get("remainTime", 0) < 1000
+        is_warning = 1000 < bomb.get("remainTime", 0) < 1300
 
         if bomb.get("playerId") in PLAYER_ID:
             if power == 1:
@@ -120,14 +123,17 @@ def get_lock_bombs(base_map: Map):
                 pos = [bomb["row"] + j[0], bomb["col"] + j[1]]
                 if base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
                     break
-                pos_danger.append(pos)
+                if is_warning:
+                    pos_warning.append(pos)
+                else:
+                    pos_danger.append(pos)
 
-    return pos_danger
+    return pos_danger, pos_warning
 
 
 # EVENT HANDLER
 
-DIRECTION_HIST = []
+
 TIME_POINT = 0
 TIME_POINT_PLAYER_OWN = 0
 ACTION_PER_POINT = 2
@@ -153,8 +159,7 @@ def set_road_to_badge():
     MAP.badges = badges
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        #EVALUATED_MAP.set_val_player(pos, StatusPoint.BADGE.value)
-
+        # EVALUATED_MAP.set_val_player(pos, StatusPoint.BADGE.value)
 
         # print(pos, tmp_dis)
         if dis > tmp_dis:
@@ -173,6 +178,11 @@ COUNT_STOP = 0
 def set_road_to_point():
     act_list, pos_list = get_action(case=2)
     set_bonus_point_road(pos_list, 50)
+
+
+DIRECTION_HIST = []
+UNLOCK = 6
+COUNT_UNLOCK = 0
 
 
 def process_emit_action(act_list):
@@ -195,14 +205,25 @@ def process_emit_action(act_list):
         direction = gen_direction(act_list[0:info["drop"]])
         ACTION_PER_POINT = info["drop"]
 
-    ACTION_PER_POINT = max(ACTION_PER_POINT, 2)
+    ACTION_PER_POINT = max(ACTION_PER_POINT, 1)
     COUNT = 0
 
     print(act_list)
+    DIRECTION_HIST.append(direction)
     drive_data = gen_drive_data(direction)
-    print(drive_data,ACTION_PER_POINT)
+    print(drive_data, ACTION_PER_POINT)
+
     emit_drive(drive_data)
-    #sys.exit()
+    print(DIRECTION_HIST)
+    DIRECTION_HIST.pop(0)
+    if len(DIRECTION_HIST) > 3:
+        if DIRECTION_HIST.count(direction) > 2 and direction not in list_skip:
+            sys.exit()
+
+
+list_skip = [
+    "x"
+]
 
 
 def ticktack_handler(data):
@@ -212,26 +233,13 @@ def ticktack_handler(data):
     global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
     global COUNT_STOP
 
-    player_id_of_event = data.get("player_id", "no id")
-
-    if player_id_of_event in PLAYER_ID and False:
-
-        if "child" in player_id_of_event:
-            pass
-        else:
-            TIME_POINT_PLAYER_OWN = data["timestamp"]
-
-            if data["tag"] in Tag.TAG_STOP.value:
-                TIME_POINT = data["timestamp"]
-                COUNT += 1
-                print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
-
     if (
             COUNT == ACTION_PER_POINT
             or data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN
             or data["timestamp"] - TIME_POINT > RANGE_TIME
     ):
-        ACTION_PER_POINT = 2
+        pr_red("process")
+        ACTION_PER_POINT = 1
         TIME_POINT = data["timestamp"]
         paste_update(data)
 
@@ -240,12 +248,9 @@ def ticktack_handler(data):
         if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
             set_road_to_point()
         act_list = get_action(1)
+        if act_list:
+            process_emit_action(act_list)
         # emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
-        process_emit_action(act_list)
-        if COUNT_STOP == 2:
-            sys.exit()
-        else:
-            COUNT_STOP += 0
 
 
 def get_case_action() -> tuple[int, dict]:
@@ -288,7 +293,11 @@ def get_action(case, param: dict = None) -> list:
                 enemy_child=ENEMY_CHILD,
             )
             end_time = time.time()
+            check = end_time - start_time
+
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
+            if check >= 0.15:
+                return []
             return x
         case 2:
             return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
@@ -338,10 +347,46 @@ def event_handle(data):
     print(f"joined game:{data}")
 
 
+RUNNING = False
+import threading
+import time
+
+lock = threading.Lock()
+
+
 @sio.on(event=TICKTACK_EVENT)
 def event_handle(data):
-    print(data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"], "-", TIME_POINT)
-    ticktack_handler(data)
+    global RUNNING
+    global DIRECTION_HIST, TIME_POINT, TIME_POINT_PLAYER_OWN
+    global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
+    player_id_of_event = data.get("player_id", "no id")
+
+    if player_id_of_event in PLAYER_ID:
+        if "child" in player_id_of_event:
+            pass
+        else:
+            TIME_POINT_PLAYER_OWN = data["timestamp"]
+
+            if data["tag"] in Tag.TAG_STOP.value:
+                TIME_POINT = data["timestamp"]
+                COUNT += 1
+                print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
+    print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"],
+          "-", TIME_POINT)
+
+    print(data["timestamp"], TIME_POINT_PLAYER_OWN, data["timestamp"] - TIME_POINT_PLAYER_OWN)
+
+    if lock.acquire(blocking=False):
+        try:
+            # Xử lý sự kiện
+            print(f"Start handling event {data['id']}")
+            ticktack_handler(data)
+            #print(f"Finished handling event {data['id']}")
+        finally:
+            lock.release()
+        return
+
+    print(f"Skipping event {data['id']} because handler is busy")
 
 
 @sio.on(event=DRIVE_EVENT)
