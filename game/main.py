@@ -7,11 +7,11 @@ from lib.alg.astar import a_star_optimized
 from lib.alg.bfs import bfs_dq
 from lib.alg.max import max_val
 from lib.model.dataclass import *
-from lib.model.enum.action import Attack, Action
-from lib.model.enum.gameobjects import Tag
+from lib.model.enum.action import Action
+from lib.model.enum.gameobjects import Tag, StatusPoint
 from lib.model.enum.range import BombRange
 from lib.utils.emit_generator import gen_direction, gen_drive_data, gen_action_data
-from lib.utils.map import euclid_distance, find_index
+from lib.utils.map import euclid_distance, find_index, get_info_action
 from lib.utils.printer import pr_green, pr_yellow
 from match import *
 
@@ -26,6 +26,7 @@ PLAYER_CHILD = Player(position=[0, 0])
 ENEMY_CHILD = Player(position=[0, 0])
 
 LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[], pos_lock=[])
+LOCKER_CHILD = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[], pos_lock=[])
 
 
 # PASTE DATA
@@ -42,8 +43,10 @@ def paste_player_data(players):
             PLAYER.has_transform = player["hasTransform"]
             PLAYER.cur_weapon = player["currentWeapon"]
             PLAYER.owner_weapon = player["ownerWeapon"]
+            PLAYER.is_stun = player["isStun"]
             if PLAYER.has_transform:
                 PLAYER.transform_type = player["transformType"]
+                PLAYER.time_to_use_special_weapons = player["timeToUseSpecialWeapons"]
             if not PLAYER.has_full_marry_items and PLAYER.has_transform:
                 PLAYER.rice = player["stickyRice"]
                 PLAYER.cake = player["chungCake"]
@@ -90,6 +93,7 @@ def paste_update(data):
     # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
 
     pr_yellow(f"spoil {MAP.spoils}")
+    pr_yellow(f"spoil {MAP.bombs}")
 
 
 def get_lock_bombs(base_map: Map):
@@ -125,7 +129,7 @@ def get_lock_bombs(base_map: Map):
 
 DIRECTION_HIST = []
 TIME_POINT = 0
-TIME_POINT_OWN = 0
+TIME_POINT_PLAYER_OWN = 0
 ACTION_PER_POINT = 2
 COUNT = 0
 COUNT_UPDATE = 0
@@ -146,9 +150,11 @@ def set_road_to_badge():
     pr_yellow(badges)
     nearest_badge = []
     dis = 100
+    MAP.badges = badges
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        EVALUATED_MAP.set_val_road(pos, StatusPoint.BADGE.value)
+        #EVALUATED_MAP.set_val_player(pos, StatusPoint.BADGE.value)
+
 
         # print(pos, tmp_dis)
         if dis > tmp_dis:
@@ -169,30 +175,64 @@ def set_road_to_point():
     set_bonus_point_road(pos_list, 50)
 
 
+def process_emit_action(act_list):
+    global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
+    global MAP, EVALUATED_MAP
+    global DIRECTION_HIST, TIME_POINT, TIME_POINT_PLAYER_OWN
+    global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
+    global COUNT_STOP
+
+    info = get_info_action(act_list)
+    if info["switch"]:
+        emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value))
+
+    if info["reface"]:
+        direction = gen_direction(act_list)
+        ACTION_PER_POINT = len(direction) - 1
+    elif info["attack"]:
+        direction = gen_direction(act_list)
+    else:
+        direction = gen_direction(act_list[0:info["drop"]])
+        ACTION_PER_POINT = info["drop"]
+
+    ACTION_PER_POINT = max(ACTION_PER_POINT, 2)
+    COUNT = 0
+
+    print(act_list)
+    drive_data = gen_drive_data(direction)
+    print(drive_data,ACTION_PER_POINT)
+    emit_drive(drive_data)
+    #sys.exit()
+
+
 def ticktack_handler(data):
     global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
     global MAP, EVALUATED_MAP
-    global DIRECTION_HIST, TIME_POINT, TIME_POINT_OWN
+    global DIRECTION_HIST, TIME_POINT, TIME_POINT_PLAYER_OWN
     global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
     global COUNT_STOP
-    print(data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"], "-", TIME_POINT)
 
-    if data.get("player_id", "no id") in PLAYER_ID:
-        TIME_POINT_OWN = data["timestamp"]
+    player_id_of_event = data.get("player_id", "no id")
 
-    if data["tag"] in Tag.TAG_STOP.value and data["player_id"] in PLAYER_ID:
-        TIME_POINT = data["timestamp"]
-        COUNT += 1
-        print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
+    if player_id_of_event in PLAYER_ID and False:
+
+        if "child" in player_id_of_event:
+            pass
+        else:
+            TIME_POINT_PLAYER_OWN = data["timestamp"]
+
+            if data["tag"] in Tag.TAG_STOP.value:
+                TIME_POINT = data["timestamp"]
+                COUNT += 1
+                print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
+
     if (
             COUNT == ACTION_PER_POINT
-            or data.get("player_id", "no id") in PLAYER_ID
-            and data["timestamp"] - TIME_POINT_OWN > RANGE_TIME_OWN
+            or data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN
             or data["timestamp"] - TIME_POINT > RANGE_TIME
     ):
         ACTION_PER_POINT = 2
         TIME_POINT = data["timestamp"]
-
         paste_update(data)
 
         if not PLAYER.has_transform:
@@ -200,19 +240,12 @@ def ticktack_handler(data):
         if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
             set_road_to_point()
         act_list = get_action(1)
-
-        direction = gen_direction(act_list)
-        print(act_list)
-        drive_data = gen_drive_data(direction)
-        print(drive_data)
-        if Attack.SWITCH_WEAPON.value in act_list:
-            emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value))
-            pass
-        emit_drive(drive_data)
-    if COUNT_STOP == 2:
-        sys.exit()
-    else:
-        COUNT_STOP += 0
+        # emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
+        process_emit_action(act_list)
+        if COUNT_STOP == 2:
+            sys.exit()
+        else:
+            COUNT_STOP += 0
 
 
 def get_case_action() -> tuple[int, dict]:
@@ -237,6 +270,7 @@ def get_action(case, param: dict = None) -> list:
     1 -> MAX \n
     2 -> BFS \n
     4 -> A STAR ; {target}\n
+    x10 -> for child
     :param param:
     :param case:
     :return:
@@ -255,13 +289,33 @@ def get_action(case, param: dict = None) -> list:
             )
             end_time = time.time()
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
-
             return x
         case 2:
             return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
         case 4:
             return a_star_optimized(
                 start=PLAYER.position, locker=LOCKER, base_map=MAP, target=param.get("target", PLAYER.position)
+            )
+        case 10:
+            start_time = time.time()
+            x = max_val(
+                base_map=MAP,
+                evaluated_map=EVALUATED_MAP,
+                locker=LOCKER,
+                player=PLAYER_CHILD,
+                enemy=ENEMY,
+                player_another=PLAYER,
+                enemy_child=ENEMY_CHILD,
+            )
+            end_time = time.time()
+            pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
+            return x
+        case 20:
+            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
+        case 40:
+            return a_star_optimized(
+                start=PLAYER_CHILD.position, locker=LOCKER, base_map=MAP,
+                target=param.get("target", PLAYER_CHILD.position)
             )
 
 
@@ -286,6 +340,7 @@ def event_handle(data):
 
 @sio.on(event=TICKTACK_EVENT)
 def event_handle(data):
+    print(data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"], "-", TIME_POINT)
     ticktack_handler(data)
 
 

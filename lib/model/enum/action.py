@@ -38,7 +38,7 @@ class NextMoveZone(Enum):
 
 
 class NextActionZone(Enum):
-    Z1 = [[1, 1], [0, 1], [1, 0], [0, -1], [-1, 0], [0, 0]]
+    Z1 = [[1, 1], [0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]]
     Z2 = [[1, 1], [0, -1], [1, 0], [-1, 0], [0, 1], [0, 0]]
     Z3 = [[1, 1], [0, 1], [-1, 0], [0, -1], [1, 0], [0, 0]]
     Z4 = [[1, 1], [0, -1], [-1, 0], [1, 0], [0, 1], [0, 0]]
@@ -52,6 +52,9 @@ class Attack(Enum):
     SWITCH_WEAPON = [6, 6]
 
     ATTACKS = [WOODEN, BOMB, HAMMER, WIND, SWITCH_WEAPON]
+    BASIC_ATTACKS = [WOODEN, BOMB]
+    BASIC_ATTACKS_WITH_CHANGE = [WOODEN, BOMB, SWITCH_WEAPON]
+    GOD_ATTACKS = [HAMMER, WIND]
 
 
 def get_move_out_zone(region):

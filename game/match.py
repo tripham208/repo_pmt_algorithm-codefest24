@@ -1,6 +1,6 @@
 # MATCH CONTEXT
 URL = "http://localhost:157/"
-GAME_ID = "a1b6d81a-2b77-4e1b-b718-bd2077f361eb"
+GAME_ID = "c9698e00-1f43-490d-b36b-201e9105dd41"
 #PLAYER_ID = "player2-xxx"
 PLAYER_ID = "player1-xxx"
 

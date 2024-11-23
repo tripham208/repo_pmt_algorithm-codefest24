@@ -4,7 +4,7 @@ from game.match import PLAYER_ID
 from lib.alg.val import val
 from lib.model.dataclass import *
 from lib.model.enum.action import get_action_zone, Face, FaceAction, Attack
-from lib.model.enum.point import StatusPoint
+from lib.model.enum.gameobjects import StatusPoint
 from lib.model.enum.range import WeaponRange
 from lib.utils.map import is_zone, get_face, get_face_act_v2, check_have_attack
 from lib.utils.printer import pr_red, pr_green, pr_yellow
@@ -64,8 +64,8 @@ def get_max_val(
         pos_list,
         act_list,
 ) -> ValResponse:
-    response = ValResponse(pos_list=pos_list, act_list=act_list)
-    print(f"70 get_max_val level:{level}")
+    response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
+    print(f"70 get_max_val level:{level} current action:{act_list}")
 
     for action in actions:
         if action == [1, 1]:
@@ -85,9 +85,7 @@ def get_max_val(
                 act_list=act_list,
             )
             print(
-                f"90 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m",
-                tmp_response.act_list,
-                tmp_response.pos_list,
+                f"90 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {tmp_response.act_list, tmp_response.pos_list}"
             )
             if response.value < tmp_response.value:
                 response = tmp_response
@@ -105,15 +103,15 @@ def get_max_val(
                 act_list=act_list,
             )
             pr_yellow(
-                f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m",
-                response.value,
-                response.act_list,
-                response.pos_list,
+                f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}"
             )
             if response.value < point:
-                response = ValResponse(pos_list=pos_list, act_list=act_list, value=point)
+                pr_green(response)
+                response = ValResponse(pos_list=list(pos_list), act_list=list(act_list), value=point)
                 response.act_list.append(action)
         else:
+            # pr_red(f"{response}")
+            # print(act_list,pos_list)
             tmp_response = move_action(
                 actions=actions,
                 base_map=base_map,
@@ -129,15 +127,13 @@ def get_max_val(
                 current_action=action,
             )
             print(
-                f"130 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m",
-                response.value,
-                tmp_response.act_list,
-                tmp_response.pos_list,
+                f"130 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {response.value} {tmp_response.act_list} {tmp_response.pos_list}"
             )
             if response.value < tmp_response.value:
                 response = tmp_response
         print(f"140 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
     return response
+
 
 def gen_bomb(player: Player):
     return {
@@ -163,7 +159,7 @@ def attack_action(
         act_list: list,
 ) -> ValResponse:
     cur_weapon = player.cur_weapon
-    response = ValResponse(pos_list=pos_list, act_list=act_list)
+    response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
     face = Face.UNKNOWN.value
 
     def wooden_attack():
@@ -192,7 +188,7 @@ def attack_action(
                 new_act_list = deepcopy(act_list)
 
                 new_base_map.set_val_map(pos_w_atk, 0)
-                new_base_map.up_point += 300
+                new_base_map.up_point += StatusPoint.BRICK_WALL.value
                 if cur_weapon == 2:
                     new_act_list.append(Attack.SWITCH_WEAPON.value)
 
@@ -300,11 +296,11 @@ def move_action(
         current_action,
 ) -> ValResponse:
     new_pos_player = [sum(i) for i in zip(player.position, current_action)]
-    pr_green(f"235 level:{level} move")
+    pr_green(f"300 level:{level} move; current action:{act_list}; current poss:{pos_list}")
 
     if not can_go_new_pos(new_pos_player, base_map, locker):
-        print(f"240 end:{current_action} level:{level}", act_list, pos_list)
-        return ValResponse(act_list=act_list, pos_list=pos_list)
+        print(f"305 end:{current_action} level:{level}", act_list, pos_list)
+        return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
 
     new_player = deepcopy(player)
     new_pos_list = deepcopy(pos_list)
@@ -315,7 +311,7 @@ def move_action(
     new_pos_list.append(new_pos_player)
 
     if level < H:
-        print(f"250 move:{current_action} level:{level}", new_act_list, new_pos_list)
+        print(f"315 move:{current_action} level:{level}", new_act_list, new_pos_list)
         return get_max_val(
             actions=actions,
             base_map=base_map,

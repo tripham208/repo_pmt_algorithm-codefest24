@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from lib.model.enum.gameobjects import MarryItem, Objects
-from lib.model.enum.point import StatusPoint
+from lib.model.enum.gameobjects import MarryItem, Objects, StatusPoint
 from lib.model.enum.range import AroundRange
 from lib.utils.map import create_map_zero
 
@@ -16,6 +15,7 @@ class Map:
     pos_enemy: list = None
     pos_enemy_child: list = None
     up_point: int = 0
+    badges: list = None
 
     def get_obj_map(self, pos):
         return self.map[pos[0]][pos[1]]
@@ -49,7 +49,7 @@ class Player:
     has_transform: bool = False
     has_bomb: bool = False
     has_full_marry_items: bool = False
-    is_tsun: bool = False
+    is_stun: bool = False
     can_use_god_attack: bool = False
     can_use_item: bool = False
 
@@ -80,12 +80,16 @@ class Locker:
     expect_pos: list = None
     expect_face: int = 0
 
+    another: dict = None
+
 
 @dataclass
 class EvaluatedMap:
     player_map: list
     enemy_map: list
     road_map: list
+
+
 
     def get_evaluated_map(self, pos_player: list, pos_enemy: list,
                           pos_player_child: list, pos_enemy_child: list):
@@ -129,6 +133,9 @@ class EvaluatedMap:
     def set_val_road(self, pos, val):
         self.road_map[pos[0]][pos[1]] = val
 
+    def set_val_player(self, pos, val):
+        self.player_map[pos[0]][pos[1]] = val
+
     def reset_point_map(self, cols, rows):
         self.player_map = create_map_zero(cols, rows)
         self.enemy_map = create_map_zero(cols, rows)
@@ -153,13 +160,17 @@ class EvaluatedMap:
         self.__set_spoils(base_map, status)
 
     def __set_bombs(self, base_map: Map):
+        # todo set bomb val point
         pass
 
     def __set_spoils(self, base_map: Map, status: Player):
+        around_range_values = AroundRange.LV1_4.value
         if status.can_use_item:
             for spoil in base_map.spoils:
                 self.road_map[spoil["row"]][spoil["col"]] = 50
-                self.player_map[spoil["row"]][spoil["col"]] = 200
+                self.player_map[spoil["row"]][spoil["col"]] = 100
+                for i in around_range_values:
+                    self.road_map[spoil["row"] + i[0]][spoil["col"] + i[1]] = 25
 
 
 @dataclass()

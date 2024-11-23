@@ -67,8 +67,34 @@ def get_face_act_v2(act):
         case [0, -1]:
             return FaceAction.LEFT_V2.value
 
+
 def check_have_attack(act_list) -> bool:
     for act in act_list:
         if act in Attack.ATTACKS.value:
             return True
     return False
+
+
+def get_info_action(act_list) -> dict:
+    output = {
+        "attack": [],
+        "switch": False,
+        "reface": False,
+        "god_attack": [],
+    }
+    index = 0
+    for act in act_list:
+        if index == 3:
+            break
+        if act in FaceAction.FACES_V2.value:
+            output["reface"] = True
+        if act in Attack.BASIC_ATTACKS.value:
+            output["attack"] = act
+        elif act == Attack.SWITCH_WEAPON.value:
+            output["switch"] = True
+        elif len(act) > 2:
+            pass
+        else:
+            index += 1
+    output["drop"] = index
+    return output

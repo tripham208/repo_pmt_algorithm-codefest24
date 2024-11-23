@@ -1,7 +1,7 @@
 from game.match import PLAYER_ID
 from lib.model.dataclass import *
 from lib.model.enum.action import FaceAction
-from lib.model.enum.point import StatusPoint
+from lib.model.enum.gameobjects import StatusPoint
 from lib.model.enum.range import BombRange
 from lib.utils.point import get_point_match_step_spoil, get_point_match_step_bomb
 
@@ -35,15 +35,23 @@ def calculate_bombs(base_map: Map):
 
 
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
-        player: Player, enemy: Player, player_another: Player, enemy_child: Player, pos_list, act_list) -> int:
+        player: Player, enemy: Player, player_another: Player, enemy_child: Player, pos_list: list,
+        act_list: list) -> int:
     evaluated_map_point = evaluated_map.get_evaluated_map(pos_player=player.position, pos_enemy=enemy.position,
-                                            pos_enemy_child=enemy_child.position,
-                                            pos_player_child=player_another.position)
+                                                          pos_enemy_child=enemy_child.position,
+                                                          pos_player_child=player_another.position)
     value = evaluated_map_point
     value += base_map.up_point
     point, pos_danger, pos_warning = calculate_bombs(base_map)
     value += point
     bonus = 0
+    bonus_badge = 0  # [[9, 19], [9, 22]]
+    if not player.has_transform and base_map.badges is not None:
+        for badge in base_map.badges:
+            if badge == pos_list[-1]:
+                print(len(pos_list))
+                bonus_badge = StatusPoint.BADGE.value - ((len(pos_list) - 1) * 400)
+
     if base_map.bombs:
         if player.position in pos_danger:
             value += StatusPoint.DANGER.value
@@ -53,9 +61,9 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
             value += StatusPoint.WARNING.value
         if player_another.position in pos_warning:
             value += StatusPoint.WARNING.value
-        if (enemy.position in pos_danger or enemy.position in pos_warning) and not enemy.is_tsun:
+        if (enemy.position in pos_danger or enemy.position in pos_warning) and not enemy.is_stun:
             value += 1000
-        if (enemy_child.position in pos_danger or enemy_child.position in pos_warning) and not enemy_child.is_tsun:
+        if (enemy_child.position in pos_danger or enemy_child.position in pos_warning) and not enemy_child.is_stun:
             value += 1000
         # bonus - optimize step in bomb range
         if pos_list:
@@ -74,6 +82,8 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         if i in FaceAction.FACES_V2.value:
             bonus -= 100
     value += bonus
-    print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus}",)
+    value += bonus_badge
+    print(
+        f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} {bonus_badge}", )
 
     return value

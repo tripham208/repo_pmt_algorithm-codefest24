@@ -90,3 +90,5 @@ def test_a():
     b()
     #print(c) error
     print(a)
+
+    print(a[0:3])

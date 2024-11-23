@@ -39,6 +39,24 @@ class Objects(Enum):
     BRICK_WALL = 3
 
 
+class StatusPoint(Enum):
+    MIN = -10000000
+    # behavior
+    PENALTY = -5000
+
+    # position
+    BADGE = 2000
+    DANGER = -10000
+    WARNING = -1000
+
+    # object
+    BRICK_WALL = 300
+    BALK = 500
+
+    # bonus
+    BADGE_NEAR = 1000
+
+
 class Weapon(Enum):
     """
     1:	Wooden pestle \n
@@ -70,10 +88,25 @@ class Tag(Enum):
     TAG_STOP = [
         "player:stop-moving",
         "player:moving-banned",
-        "bomb:setup"
+        "bomb:setup",
+        "wooden-pestle:setup",
+    ]
+
+    TAG_REPLAY = [
+        "player:outto-wedding-room",
+        "player:back-to-playground",
     ]
 
 
 class Time(Enum):
     REMAIN_TIME_LOCK = 600
     TIME_UNLOCK = 300
+
+
+class Cell(Enum):
+    """
+    size cell on map
+    """
+
+    TRAINING = 35
+    FIGHTING = 55
