@@ -92,3 +92,4 @@ def test_a():
     print(a)
 
     print(a[0:3])
+    print(int(datetime.datetime.now().timestamp() * 1000))

@@ -26,9 +26,9 @@ def gen_direction(list_action: list[list]):
             case [0, 0]:
                 direction += "x"
             case [2, 2]:
-                direction += "b"
+                direction += "b" #wooden
             case [3, 3]:
-                direction += "b"
+                direction += "b" #bomb
             case FaceAction.UP_V2.value:
                 direction += "3"
                 break

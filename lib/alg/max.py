@@ -64,7 +64,7 @@ def max_val(
         locker.expect_pos = response.expect_pos
         locker.expect_face = response.expect_face
 
-    pr_red(f"end max_val:{response.value}", act_list)
+    pr_red(f"end max_val:{response.value} {act_list}")
     return act_list
 
 
@@ -178,7 +178,7 @@ def attack_action(
         nonlocal player, enemy, player_another, enemy_child
         #pr_yellow("wooden_attack")
         if len(pos_list) >= 2:
-            copy_list = [pos for pos in pos_list if pos not in Attack.ATTACKS.value]
+            copy_list = [pos for pos in pos_list]
 
             if len(copy_list) >= 2:
                 face = get_face(copy_list[-2], copy_list[-1])
@@ -187,10 +187,10 @@ def attack_action(
             if locker.expect_pos == player.position:
                 face = locker.expect_face
                 #print(f"190 level:{level} expect_face attack {face}")
-        if face == Face.UNKNOWN.value:
+        if face == Face.UNKNOWN.value :
             #print(f"195 level:{level} attack UNKNOW return")
             return
-        if player.position in locker.danger_pos_lock_max:
+        if player.position in locker.all_bomb_pos:
             return
         for act_atk in WeaponRange.WOODEN.value:
             pos_w_atk = [sum(i) for i in zip(player.position, act_atk)]
@@ -253,7 +253,7 @@ def attack_action(
             new_act_list.append(Attack.SWITCH_WEAPON.value)
             new_player.cur_weapon = 2
 
-        # new_pos_list.append(new_player.position)
+        new_pos_list.append(new_player.position)
         new_act_list.append(Attack.BOMB.value)
 
         tmp_response = get_max_val(

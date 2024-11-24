@@ -30,7 +30,10 @@ def a_star_original(start: list, target: list, locker: Locker, base_map: Map):
             new_status = deepcopy(current_status)
 
             new_status[0] = new_pos_player
-            new_status[1] = euclid_distance(new_pos_player, target)
+            if base_map.get_obj_map(new_pos_player) == 3:
+                new_status[1] = euclid_distance(new_pos_player, target) + 1
+            else:
+                new_status[1] = euclid_distance(new_pos_player, target)
             new_status[2].append(new_pos_player)
             new_status[3].append(act)
             queue.append(new_status)
@@ -59,7 +62,7 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
 
             if (
                     new_pos_player in locker.danger_pos_lock_bfs
-                    or base_map.map[new_pos_player[0]][new_pos_player[1]] in locker.a_star_lock
+                    or base_map.get_obj_map(new_pos_player) in locker.a_star_lock
                     or new_pos_player in locker.pos_lock
                     or new_pos_lock in lock_duplicate
             ):
@@ -68,6 +71,12 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
             lock_duplicate.add(new_pos_lock)
             new_pos_list = pos_list + [new_pos_player]
             new_act_list = act_list + [act]
-            heappush(queue, (euclid_distance(new_pos_player, target), new_pos_player, new_pos_list, new_act_list))
+
+
+            if base_map.get_obj_map(new_pos_player) == 3:
+                dis = euclid_distance(new_pos_player, target) + 1
+            else:
+                dis = euclid_distance(new_pos_player, target)
+            heappush(queue, (dis, new_pos_player, new_pos_list, new_act_list))
 
     return [], []

@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 
 import socketio
 
@@ -6,7 +7,7 @@ from lib.alg.astar import a_star_optimized
 from lib.alg.bfs import bfs_dq
 from lib.alg.max import max_val
 from lib.model.dataclass import *
-from lib.model.enum.action import Action
+from lib.model.enum.action import Action, Attack
 from lib.model.enum.gameobjects import Tag
 from lib.model.enum.range import BombRange
 from lib.utils.emit_generator import gen_direction, gen_drive_data, gen_action_data
@@ -24,17 +25,31 @@ ENEMY = Player(position=[])
 PLAYER_CHILD = Player(position=[0, 0])
 ENEMY_CHILD = Player(position=[0, 0])
 
-LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[], pos_lock=[])
-LOCKER_CHILD = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=[], pos_lock=[])
+LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=Objects.A_STAR_PHASE1_LOCK.value,
+                pos_lock=[])
+
+HAVE_CHILD = False
+ENEMY_NOT_IN_MAP = True
+
+
+def check_id_child(pid) -> bool:
+    if (pid in PLAYER_ID
+            or PLAYER_ID in pid
+            or pid[0:10] in PLAYER_ID
+    ):
+        return True
+    return False
 
 
 # PASTE DATA
 def paste_player_data(players):
-    global PLAYER, ENEMY
+    global PLAYER, ENEMY, HAVE_CHILD, ENEMY_NOT_IN_MAP
+    ENEMY_NOT_IN_MAP = True
 
     for player in players:
         print(player)
-        if player["id"] in PLAYER_ID and not player.get("isChild", False):
+        if player["id"] in PLAYER_ID and player.get("isChild", False) == False:
+            # print("paste_player")
             PLAYER.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             PLAYER.power = player["power"]
             PLAYER.score = player["score"]
@@ -44,8 +59,9 @@ def paste_player_data(players):
             PLAYER.owner_weapon = player["ownerWeapon"]
             PLAYER.is_stun = player["isStun"]
             if PLAYER.has_transform:
-                PLAYER.transform_type = player["transformType"]
+                PLAYER.transform_type = player.get("transformType", 0)
                 PLAYER.time_to_use_special_weapons = player["timeToUseSpecialWeapons"]
+                PLAYER.can_use_item = True
             if not PLAYER.has_full_marry_items and PLAYER.has_transform:
                 PLAYER.rice = player["stickyRice"]
                 PLAYER.cake = player["chungCake"]
@@ -54,16 +70,25 @@ def paste_player_data(players):
                 PLAYER.horse = player["nineManeHairHorse"]
                 if PLAYER.owned_marry_items == 5:
                     PLAYER.has_full_marry_items = True
-        elif player["id"] in PLAYER_ID and player["isChild"]:
+        elif check_id_child(player["id"]) and player["isChild"] == True:
+            # print("paste_player Child", player["currentPosition"])
             PLAYER_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             PLAYER_CHILD.power = player["power"]
-        elif player["id"] not in PLAYER_ID and player.get("isChild", False):
+            PLAYER_CHILD.cur_weapon = player["currentWeapon"]
+            PLAYER_CHILD.owner_weapon = player["ownerWeapon"]
+            HAVE_CHILD = True
+        elif player["id"] not in PLAYER_ID and player.get("isChild", False) == True:
+            # print("paste_ENEMY_CHILD")
             ENEMY_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             ENEMY_CHILD.power = player["power"]
+            ENEMY_CHILD.is_stun = player["isStun"]
         else:
+            # print("paste_ENEMY")
             ENEMY.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             ENEMY.power = player["power"]
             ENEMY.has_transform = player["hasTransform"]
+            ENEMY.is_stun = player["isStun"]
+            ENEMY_NOT_IN_MAP = False
 
 
 def paste_update(data):
@@ -85,12 +110,13 @@ def paste_update(data):
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
     EVALUATED_MAP.set_point_map(base_map=MAP, status=PLAYER)
 
-    lock_danger, pos_warning = get_lock_bombs(base_map=MAP)
+    lock_danger, pos_warning, pos_all = get_lock_bombs(base_map=MAP)
     LOCKER.pos_lock = lock_danger + [PLAYER_CHILD.position, ENEMY.position, ENEMY_CHILD.position]
     LOCKER.danger_pos_lock_max = lock_danger
     LOCKER.danger_pos_lock_bfs = lock_danger
     LOCKER.warning_pos_bfs = pos_warning
     LOCKER.warning_pos_max = pos_warning
+    LOCKER.all_bomb_pos = pos_all
     # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
 
     pr_yellow(f"spoil {MAP.spoils}")
@@ -100,23 +126,20 @@ def paste_update(data):
 def get_lock_bombs(base_map: Map):
     pos_danger = []
     pos_warning = []
+    pos_all = []
     PLAYER.has_bomb = True
     PLAYER_CHILD.has_bomb = True
     for bomb in base_map.bombs:
         power = bomb.get("power", 0)
         bomb_range = BombRange[f"LV{power}"].value
         pos_danger += [[bomb["row"], bomb["col"]]]
-        is_danger = bomb.get("remainTime", 0) < 1000
+        is_safe = bomb.get("remainTime", 0) > 1300
         is_warning = 1000 < bomb.get("remainTime", 0) < 1300
 
         if bomb.get("playerId") in PLAYER_ID:
-            if power == 1:
-                PLAYER_CHILD.has_bomb = False
-            else:
-                PLAYER.has_bomb = False
-
-        if not is_danger:
-            continue
+            PLAYER.has_bomb = False
+        elif check_id_child(bomb.get("playerId")):
+            PLAYER_CHILD.has_bomb = False
 
         for i in bomb_range:
             for j in i:
@@ -127,27 +150,16 @@ def get_lock_bombs(base_map: Map):
                     pos_warning.append(pos)
                 else:
                     pos_danger.append(pos)
+                pos_all.append(pos)
 
-    return pos_danger, pos_warning
+    return pos_danger, pos_warning, pos_all
 
 
 # EVENT HANDLER
-
-
-TIME_POINT = 0
-TIME_POINT_PLAYER_OWN = 0
-ACTION_PER_POINT = 2
-COUNT = 0
-COUNT_UPDATE = 0
-COUNT_ST = 0
-RANGE_TIME = 550
-RANGE_TIME_OWN = 400
-
-
-def set_bonus_point_road(pos_list, x: int):
+def set_bonus_point_road(pos_list, start, x: int):
     global EVALUATED_MAP
     for pos in pos_list:
-        EVALUATED_MAP.set_val_road(pos, euclid_distance(PLAYER.position, pos) * x)
+        EVALUATED_MAP.set_val_road(pos, euclid_distance(start, pos) * x)
 
 
 def set_road_to_badge():
@@ -167,90 +179,9 @@ def set_road_to_badge():
             nearest_badge = pos
     LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value  # lock phase 1
     act_list, pos_list = get_action(case=4, param={"target": nearest_badge})
-    # print(pos_list)
+    # pr_red(f"astar {pos_list}")
     # print(act_list)
-    set_bonus_point_road(pos_list, 100)
-
-
-COUNT_STOP = 0
-
-
-def set_road_to_point():
-    act_list, pos_list = get_action(case=2)
-    set_bonus_point_road(pos_list, 50)
-
-
-DIRECTION_HIST = []
-UNLOCK = 6
-COUNT_UNLOCK = 0
-
-
-def process_emit_action(act_list):
-    global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
-    global MAP, EVALUATED_MAP
-    global DIRECTION_HIST, TIME_POINT, TIME_POINT_PLAYER_OWN
-    global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
-    global COUNT_STOP
-
-    info = get_info_action(act_list)
-    if info["switch"]:
-        emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value))
-
-    if info["reface"]:
-        direction = gen_direction(act_list)
-        ACTION_PER_POINT = len(direction) - 1
-    elif info["attack"]:
-        direction = gen_direction(act_list)
-    else:
-        direction = gen_direction(act_list[0:info["drop"]])
-        ACTION_PER_POINT = info["drop"]
-
-    ACTION_PER_POINT = max(ACTION_PER_POINT, 1)
-    COUNT = 0
-
-    print(act_list)
-    DIRECTION_HIST.append(direction)
-    drive_data = gen_drive_data(direction)
-    print(drive_data, ACTION_PER_POINT)
-
-    emit_drive(drive_data)
-    print(DIRECTION_HIST)
-    DIRECTION_HIST.pop(0)
-    if len(DIRECTION_HIST) > 3:
-        if DIRECTION_HIST.count(direction) > 2 and direction not in list_skip:
-            sys.exit()
-
-
-list_skip = [
-    "x"
-]
-
-
-def ticktack_handler(data):
-    global PLAYER, ENEMY, PLAYER_CHILD, ENEMY_CHILD
-    global MAP, EVALUATED_MAP
-    global DIRECTION_HIST, TIME_POINT, TIME_POINT_PLAYER_OWN
-    global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
-    global COUNT_STOP
-
-    if (
-            COUNT == ACTION_PER_POINT
-            or data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN
-            or data["timestamp"] - TIME_POINT > RANGE_TIME
-    ):
-        pr_red("process")
-        ACTION_PER_POINT = 1
-        TIME_POINT = data["timestamp"]
-        paste_update(data)
-
-        if not PLAYER.has_transform:
-            set_road_to_badge()
-        if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
-            set_road_to_point()
-        act_list = get_action(1)
-        if act_list:
-            process_emit_action(act_list)
-        # emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
+    set_bonus_point_road(pos_list, PLAYER.position, 100)
 
 
 def get_case_action() -> tuple[int, dict]:
@@ -328,6 +259,167 @@ def get_action(case, param: dict = None) -> list:
             )
 
 
+def set_road_to_point(start):
+    act_list, pos_list = get_action(case=2)
+    set_bonus_point_road(pos_list, start, 50)
+
+
+DIRECTION_HIST_PLAYER = []
+DIRECTION_HIST_CHILD = []
+UNLOCK = 6
+COUNT_UNLOCK = 0
+
+
+def process_emit_action(act_list, child: bool = False):
+    global ACTION_PER_POINT_PLAYER, COUNT_POINT_PLAYER
+    global ACTION_PER_POINT_CHILD, COUNT_POINT_CHILD
+
+    info = get_info_action(act_list)
+    if info["switch"]:
+        emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value, child=child))
+
+    if not child:
+        if info["reface"]:
+            direction = gen_direction(act_list)
+            ACTION_PER_POINT_PLAYER = len(direction)
+        elif info["attack"] in Attack.BASIC_ATTACKS.value:
+            direction = gen_direction(act_list)
+            ACTION_PER_POINT_PLAYER = info["drop"]
+        else:
+            direction = gen_direction(act_list[0:info["drop"]])
+            ACTION_PER_POINT_PLAYER = info["drop"]
+
+        ACTION_PER_POINT_PLAYER = max(ACTION_PER_POINT_PLAYER, 1)
+        print(ACTION_PER_POINT_PLAYER)
+        COUNT_POINT_PLAYER = 0
+    else:
+        print("process_emit_action set child")
+        if info["reface"]:
+            direction = gen_direction(act_list)
+            ACTION_PER_POINT_CHILD = len(direction)
+        elif info["attack"] in Attack.BASIC_ATTACKS.value:
+            direction = gen_direction(act_list)
+            ACTION_PER_POINT_CHILD = info["drop"]
+        else:
+            direction = gen_direction(act_list[0:info["drop"]])
+            ACTION_PER_POINT_CHILD = info["drop"]
+
+        ACTION_PER_POINT_CHILD = max(ACTION_PER_POINT_CHILD, 1)
+        COUNT_POINT_CHILD = 0
+
+    print(act_list)
+    # DIRECTION_HIST.append(direction)
+    drive_data = gen_drive_data(direction, child=child)
+    # TODO DEDUP ACTION
+    emit_drive(drive_data)
+
+
+def dedup_action(action, action_v2):
+    global ACTION_PER_POINT_PLAYER
+    direction = gen_direction(action)
+    DIRECTION_HIST_PLAYER.append(direction)
+    print(DIRECTION_HIST_PLAYER)
+    if len(DIRECTION_HIST_PLAYER) >= 6:
+        if DIRECTION_HIST_PLAYER.count(direction) >= 3:
+            ACTION_PER_POINT_PLAYER = len(action_v2)
+            direction = gen_direction(action_v2)
+            DIRECTION_HIST_PLAYER.pop()
+            DIRECTION_HIST_PLAYER.append(direction)
+        DIRECTION_HIST_PLAYER.pop(0)
+    if len(direction) != ACTION_PER_POINT_PLAYER:  # re verify
+        ACTION_PER_POINT_PLAYER = len(direction)
+    # pr_red("line 400 new direction:" + direction)
+    return direction
+
+
+list_skip = [
+    "x"
+]
+
+ACTION_PER_POINT_PLAYER = 1
+ACTION_PER_POINT_CHILD = 1
+
+TIME_POINT_PLAYER = 0
+TIME_POINT_CHILD = 0
+
+TIME_POINT_PLAYER_OWN = 0
+TIME_POINT_CHILD_OWN = 0
+
+COUNT_POINT_PLAYER = 0
+COUNT_POINT_CHILD = 0
+
+COUNT_UPDATE = 0
+COUNT_ST = 0
+RANGE_TIME = 550
+RANGE_TIME_OWN = 400
+
+DEDUP_EVENT_PLAYER = 0
+
+
+def ticktack_handler(data):
+    global HAVE_CHILD
+    global TIME_POINT_PLAYER
+    global TIME_POINT_CHILD
+    is_paste_update = False
+    if (
+            COUNT_POINT_PLAYER == ACTION_PER_POINT_PLAYER
+            or data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN
+            or data["timestamp"] - TIME_POINT_PLAYER > RANGE_TIME
+    ):
+        pass
+        pr_red("process PLAYER")
+        if COUNT_POINT_PLAYER == ACTION_PER_POINT_PLAYER:
+            pr_yellow("player trigger by point")
+        if data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN:
+            pr_yellow("player trigger by timeout own")
+        if data["timestamp"] - TIME_POINT_PLAYER > RANGE_TIME:
+            pr_yellow("player trigger by timeout")
+
+        TIME_POINT_PLAYER = data["timestamp"]
+        if not is_paste_update:
+            paste_update(data)
+            is_paste_update = True
+
+        if PLAYER.has_full_marry_items and HAVE_CHILD == False and ENEMY_NOT_IN_MAP == False:
+            emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
+        if not PLAYER.has_transform:
+            set_road_to_badge()
+        if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
+            set_road_to_point(PLAYER.position)
+        act_list = get_action(1)
+        if act_list:
+            process_emit_action(act_list)
+    # CHILD
+    HAVE_CHILD = True
+    if (
+            (COUNT_POINT_CHILD == ACTION_PER_POINT_CHILD
+             or data["timestamp"] - TIME_POINT_CHILD_OWN > RANGE_TIME_OWN
+             or data["timestamp"] - TIME_POINT_CHILD > RANGE_TIME
+            ) and HAVE_CHILD
+    ):
+        pr_red("process child")
+
+        print("start", int(datetime.now().timestamp() * 1000))
+
+        if COUNT_POINT_CHILD == ACTION_PER_POINT_CHILD:
+            pr_yellow("CHILD trigger by point")
+        if data["timestamp"] - TIME_POINT_CHILD_OWN > RANGE_TIME_OWN:
+            pr_yellow(f"CHILD trigger by timeout own{data["timestamp"], TIME_POINT_CHILD_OWN}")
+        if data["timestamp"] - TIME_POINT_CHILD > RANGE_TIME:
+            pr_yellow("CHILD trigger by timeout")
+        if not is_paste_update:
+            paste_update(data)
+        TIME_POINT_CHILD = data["timestamp"]
+        if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
+            set_road_to_point(PLAYER_CHILD.position)
+        act_list = get_action(10)
+        if act_list:
+            process_emit_action(act_list, child=True)
+
+        print("end", int(datetime.now().timestamp() * 1000))
+        #sys.exit()
+
+
 # SOCKET HANDLER
 sio = socketio.Client()
 
@@ -356,37 +448,63 @@ lock = threading.Lock()
 
 @sio.on(event=TICKTACK_EVENT)
 def event_handle(data):
-    global RUNNING
-    global DIRECTION_HIST, TIME_POINT, TIME_POINT_PLAYER_OWN
-    global COUNT, COUNT_UPDATE, COUNT_ST, ACTION_PER_POINT
-    player_id_of_event = data.get("player_id", "no id")
+    global RUNNING, DEDUP_EVENT_PLAYER
+    global TIME_POINT_CHILD_OWN, TIME_POINT_CHILD, COUNT_POINT_CHILD
+    global TIME_POINT_PLAYER_OWN, TIME_POINT_PLAYER, COUNT_POINT_PLAYER
 
-    if player_id_of_event in PLAYER_ID:
-        if "child" in player_id_of_event:
-            pass
-        else:
+    player_id_of_event = data.get("player_id", "no id")
+    print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
+
+    if (player_id_of_event in PLAYER_ID
+            or PLAYER_ID in player_id_of_event
+            or player_id_of_event[0:10] in PLAYER_ID
+    ):
+
+        # print("event by player", data["timestamp"], TIME_POINT_PLAYER_OWN, data["timestamp"] - TIME_POINT_PLAYER_OWN,
+        #       RANGE_TIME_OWN, "----------", TIME_POINT_PLAYER, data["timestamp"] - TIME_POINT_PLAYER, RANGE_TIME)
+
+        if "child" in player_id_of_event and HAVE_CHILD:
+
+            TIME_POINT_CHILD_OWN = data["timestamp"]
+
+            if data["tag"] in Tag.TAG_STOP.value:
+
+                if DEDUP_EVENT_PLAYER == data["id"]:
+                    pass
+                else:
+                    DEDUP_EVENT_PLAYER = data["id"]
+                    TIME_POINT_CHILD = data["timestamp"]
+                    COUNT_POINT_CHILD += 1
+                    print("line 350:", data["id"], COUNT_POINT_CHILD, " in ", ACTION_PER_POINT_CHILD)
+
+        elif "child" not in player_id_of_event:
             TIME_POINT_PLAYER_OWN = data["timestamp"]
 
             if data["tag"] in Tag.TAG_STOP.value:
-                TIME_POINT = data["timestamp"]
-                COUNT += 1
-                print("line 350: ", COUNT, " in ", ACTION_PER_POINT)
-    print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"],
-          "-", TIME_POINT)
 
-    print(data["timestamp"], TIME_POINT_PLAYER_OWN, data["timestamp"] - TIME_POINT_PLAYER_OWN)
+                if DEDUP_EVENT_PLAYER == data["id"]:
+                    pass
+                else:
+                    DEDUP_EVENT_PLAYER = data["id"]
+                    TIME_POINT_PLAYER = data["timestamp"]
+                    COUNT_POINT_PLAYER += 1
+                    print("line 350:", data["id"], COUNT_POINT_PLAYER, " in ", ACTION_PER_POINT_PLAYER)
+    # if not RUNNING:
+    #     RUNNING = True
+    #     ticktack_handler(data)
+    #     RUNNING = False
 
-    if lock.acquire(blocking=False):
-        try:
-            # Xử lý sự kiện
-            print(f"Start handling event {data['id']}")
-            ticktack_handler(data)
-            #print(f"Finished handling event {data['id']}")
-        finally:
-            lock.release()
-        return
-
-    print(f"Skipping event {data['id']} because handler is busy")
+    ticktack_handler(data)
+    # if lock.acquire(blocking=False):
+    #     try:
+    #         # Xử lý sự kiện
+    #         print(f"Start handling event {data['id']}")
+    #         ticktack_handler(data)
+    #         # print(f"Finished handling event {data['id']}")
+    #     finally:
+    #         lock.release()
+    # return
+    # print(f"Skipping event {data['id']} because handler is busy")
 
 
 @sio.on(event=DRIVE_EVENT)
@@ -407,6 +525,7 @@ def emit_join_game(game_id: str, player_id: str):
 
 
 def emit_drive(data: dict):
+    print(data, "player", ACTION_PER_POINT_PLAYER, "child", ACTION_PER_POINT_CHILD)
     emit_event(event=DRIVE_EVENT, data=data)
 
 

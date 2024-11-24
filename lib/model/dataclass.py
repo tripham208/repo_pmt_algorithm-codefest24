@@ -79,6 +79,8 @@ class Locker:
 
     warning_pos_bfs: list = None
     warning_pos_max: list = None
+
+    all_bomb_pos: list = None
     # use for checkpoint
     expect_pos: list = None
     expect_face: int = 0
