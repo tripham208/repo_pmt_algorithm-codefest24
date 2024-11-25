@@ -38,6 +38,9 @@ class Objects(Enum):
     BALK = 2
     BRICK_WALL = 3
 
+    MOUNTAIN_GOD = 1
+    WATER_GOD = 2
+
 
 class StatusPoint(Enum):
     MIN = -10000000
@@ -54,7 +57,8 @@ class StatusPoint(Enum):
     BALK = 500
 
     # bonus
-    BOMB_ENEMY = 1000
+    BOMB_ENEMY = 2000
+    GOD_ENEMY = 3000
 
 
 class Weapon(Enum):

@@ -259,9 +259,13 @@ def get_action(case, param: dict = None) -> list:
             )
 
 
-def set_road_to_point(start):
-    act_list, pos_list = get_action(case=2)
-    set_bonus_point_road(pos_list, start, 50)
+def set_road_to_point(start, child: bool = False):
+    if not child:
+        act_list, pos_list = get_action(case=2)
+        set_bonus_point_road(pos_list, start, 50)
+    else:
+        act_list, pos_list = get_action(case=20)
+        set_bonus_point_road(pos_list, start, 50)
 
 
 DIRECTION_HIST_PLAYER = []
@@ -390,7 +394,7 @@ def ticktack_handler(data):
         if act_list:
             process_emit_action(act_list)
     # CHILD
-    HAVE_CHILD = True
+    #HAVE_CHILD = True
     if (
             (COUNT_POINT_CHILD == ACTION_PER_POINT_CHILD
              or data["timestamp"] - TIME_POINT_CHILD_OWN > RANGE_TIME_OWN
@@ -505,7 +509,7 @@ def event_handle(data):
     #         lock.release()
     # return
     # print(f"Skipping event {data['id']} because handler is busy")
-
+    #todo: fix sao cho cac event ko overlap
 
 @sio.on(event=DRIVE_EVENT)
 def event_handle(data):

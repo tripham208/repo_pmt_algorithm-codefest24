@@ -42,6 +42,21 @@ def calculate_bombs(base_map: Map, player: Player):
 
     return point, pos_danger, pos_warning
 
+def calculate_hammer(base_map: Map) -> list:
+    pos_danger = []
+    pos_warning = []
+    if base_map.hammers is not None:
+        for hammer in base_map.hammers:
+            pass
+    return pos_danger
+
+def calculate_wind(base_map: Map) -> list:
+    pos_danger = []
+    if base_map.winds is not None:
+        for wind in base_map.winds:
+            pass
+    return pos_danger
+
 
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         player: Player, enemy: Player, player_another: Player, enemy_child: Player, pos_list: list,
@@ -70,7 +85,7 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
             value += StatusPoint.WARNING.value
         if player_another.position in pos_warning:
             value += StatusPoint.WARNING.value
-        if enemy.has_transform and False:  # block bomb enemy
+        if enemy.has_transform and False:  # todo: unlock bomb enemy
             if (enemy.position in pos_danger or enemy.position in pos_warning) and not enemy.is_stun:
                 value += StatusPoint.BOMB_ENEMY.value
             if (enemy_child.position in pos_danger or enemy_child.position in pos_warning) and not enemy_child.is_stun:
@@ -101,5 +116,5 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
     value += bonus
     value += bonus_badge
     #print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} {bonus_badge}", )
-
+    #todo enable god attack
     return value

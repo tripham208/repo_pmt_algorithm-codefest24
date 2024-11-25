@@ -6,8 +6,8 @@ from lib.model.dataclass import *
 from lib.model.enum.action import get_action_zone, Face, FaceAction, Attack
 from lib.model.enum.gameobjects import StatusPoint
 from lib.model.enum.range import WeaponRange, BombRange
-from lib.utils.map import is_zone, get_face, get_face_act_v2, check_have_attack
-from lib.utils.printer import pr_red, pr_green, pr_yellow
+from lib.utils.map import is_zone, get_face, get_face_act_v2, check_have_attack, euclid_distance
+from lib.utils.printer import pr_red
 
 H = 4
 H_NO_ATTACK_BOMB = 3
@@ -29,6 +29,7 @@ def check_bomb_have_target(bomb, base_map: Map, enemy: Player, enemy_child: Play
             elif base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
                 break
     return False
+
 
 def max_val(
         base_map: Map,
@@ -82,7 +83,7 @@ def get_max_val(
         act_list,
 ) -> ValResponse:
     response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
-    #print(f"85 get_max_val level:{level} current action:{act_list}")
+    # print(f"85 get_max_val level:{level} current action:{act_list}")
 
     for action in actions:
         if action == [1, 1]:
@@ -101,7 +102,7 @@ def get_max_val(
                 pos_list=pos_list,
                 act_list=act_list,
             )
-            #print(f"105 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {tmp_response.act_list, tmp_response.pos_list}")
+            # print(f"105 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {tmp_response.act_list, tmp_response.pos_list}")
             if response.value < tmp_response.value:
                 response = tmp_response
 
@@ -117,9 +118,9 @@ def get_max_val(
                 pos_list=pos_list,
                 act_list=act_list,
             )
-            #pr_yellow(f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}")
+            # pr_yellow(f"110 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}")
             if response.value < point:
-                #pr_green(response)
+                # pr_green(response)
                 response = ValResponse(pos_list=list(pos_list), act_list=list(act_list), value=point)
                 response.act_list.append(action)
         else:
@@ -139,10 +140,10 @@ def get_max_val(
                 act_list=act_list,
                 current_action=action,
             )
-            #print(f"130 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {response.value} {tmp_response.act_list} {tmp_response.pos_list}")
+            # print(f"130 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {response.value} {tmp_response.act_list} {tmp_response.pos_list}")
             if response.value < tmp_response.value:
                 response = tmp_response
-        #print(f"140 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
+        # print(f"140 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
     return response
 
 
@@ -176,25 +177,25 @@ def attack_action(
     def wooden_attack():
         nonlocal face, response, pos_list, act_list, base_map, level, locker, actions, evaluated_map, cur_weapon
         nonlocal player, enemy, player_another, enemy_child
-        #pr_yellow("wooden_attack")
+        # pr_yellow("wooden_attack")
         if len(pos_list) >= 2:
             copy_list = [pos for pos in pos_list]
 
             if len(copy_list) >= 2:
                 face = get_face(copy_list[-2], copy_list[-1])
-                #print(f"185 level:{level} attack new {face} by {copy_list[-2], copy_list[-1]}")
+                # print(f"185 level:{level} attack new {face} by {copy_list[-2], copy_list[-1]}")
         else:
             if locker.expect_pos == player.position:
                 face = locker.expect_face
-                #print(f"190 level:{level} expect_face attack {face}")
-        if face == Face.UNKNOWN.value :
-            #print(f"195 level:{level} attack UNKNOW return")
+                # print(f"190 level:{level} expect_face attack {face}")
+        if face == Face.UNKNOWN.value:
+            # print(f"195 level:{level} attack UNKNOW return")
             return
         if player.position in locker.all_bomb_pos:
             return
         for act_atk in WeaponRange.WOODEN.value:
             pos_w_atk = [sum(i) for i in zip(player.position, act_atk)]
-            #print(pos_w_atk, base_map.get_obj_map(pos_w_atk))
+            # print(pos_w_atk, base_map.get_obj_map(pos_w_atk))
             if base_map.get_obj_map(pos_w_atk) == 3:
                 new_base_map = deepcopy(base_map)
                 new_player = deepcopy(player)
@@ -225,7 +226,7 @@ def attack_action(
                     act_list=new_act_list,
                 )
 
-                #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                # print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
                 if response.value < tmp_response.value:
                     response = tmp_response
                     response.expect_pos = player.position
@@ -235,7 +236,7 @@ def attack_action(
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
 
-        #pr_yellow("bomb_attack")
+        # pr_yellow("bomb_attack")
         new_player = deepcopy(player)
 
         new_player.has_bomb = False
@@ -271,11 +272,25 @@ def attack_action(
         )
         if response.value < tmp_response.value:
             response = tmp_response
-        #print(f"270 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+        # print(f"270 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
 
     def god_attack():
         nonlocal face, response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
+        distance_enemy = euclid_distance(player.position, enemy.position)
+        distance_child = euclid_distance(player.position, enemy_child.position)
+        if player.transform_type == Objects.MOUNTAIN_GOD.value:
+            pass
+        else:
+            if len(pos_list) >= 2:
+                copy_list = [pos for pos in pos_list]
+                if len(copy_list) >= 2:
+                    face = get_face(copy_list[-2], copy_list[-1])
+            else:
+                if locker.expect_pos == player.position:
+                    face = locker.expect_face
+            if face == Face.UNKNOWN.value:
+                return
 
     if Attack.WOODEN.value in act_list:
         pass
@@ -286,6 +301,9 @@ def attack_action(
         pass
     elif 2 in player.owner_weapon and player.has_bomb:
         bomb_attack()
+
+    if Player.has_transform and False:
+        god_attack()
 
     return response
 
@@ -315,10 +333,10 @@ def move_action(
         current_action,
 ) -> ValResponse:
     new_pos_player = [sum(i) for i in zip(player.position, current_action)]
-    #pr_green(f"320 level:{level} move; current action:{act_list}; current poss:{pos_list}")
+    # pr_green(f"320 level:{level} move; current action:{act_list}; current poss:{pos_list}")
 
     if not can_go_new_pos(new_pos_player, base_map, locker):
-        #print(f"325 end:{current_action} level:{level}", act_list, pos_list)
+        # print(f"325 end:{current_action} level:{level}", act_list, pos_list)
         return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
 
     new_player = deepcopy(player)
@@ -330,7 +348,7 @@ def move_action(
     new_pos_list.append(new_pos_player)
 
     if level < H:
-        #print(f"315 move:{current_action} level:{level}", new_act_list, new_pos_list)
+        # print(f"315 move:{current_action} level:{level}", new_act_list, new_pos_list)
         return get_max_val(
             actions=actions,
             base_map=base_map,
@@ -357,5 +375,5 @@ def move_action(
             act_list=new_act_list,
         )
 
-        #print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
+        # print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
         return ValResponse(value=point, act_list=new_act_list, pos_list=new_pos_list)

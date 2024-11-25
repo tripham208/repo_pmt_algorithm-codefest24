@@ -16,6 +16,8 @@ class Map:
     pos_enemy_child: list = None
     up_point: int = 0
     badges: list = None
+    hammers: list = None
+    winds: list = None
 
     def get_obj_map(self, pos):
         return self.map[pos[0]][pos[1]]
@@ -166,6 +168,7 @@ class EvaluatedMap:
 
     def __set_bombs(self, base_map: Map):
         # todo set bomb val point
+        # set trong hàm val nên maybe không cần nuwa
         pass
 
     def __set_spoils(self, base_map: Map, status: Player):
