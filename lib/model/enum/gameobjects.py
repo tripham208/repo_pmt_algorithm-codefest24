@@ -91,7 +91,6 @@ class AnotherItem(Enum):
 class Tag(Enum):
     TAG_STOP = [
         "player:stop-moving",
-        "player:moving-banned",
         "bomb:setup",
         "wooden-pestle:setup",
     ]
@@ -99,6 +98,14 @@ class Tag(Enum):
     TAG_REPLAY = [
         "player:outto-wedding-room",
         "player:back-to-playground",
+        "player:moving-banned",
+        "player:stun-timeout"
+    ]
+
+    BACKLOG = [
+        "player:into-wedding-room",
+        "bomb:exploded",
+        "player:switched-weapon",
     ]
 
 

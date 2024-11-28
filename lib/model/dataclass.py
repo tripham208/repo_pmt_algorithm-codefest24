@@ -86,7 +86,7 @@ class Locker:
     # use for checkpoint
     expect_pos: list = None
     expect_face: int = 0
-
+    # use on-demand
     another: dict = None
 
 

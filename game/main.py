@@ -1,4 +1,3 @@
-import sys
 from datetime import datetime
 
 import socketio
@@ -33,9 +32,9 @@ ENEMY_NOT_IN_MAP = True
 
 
 def check_id_child(pid) -> bool:
-    if (pid in PLAYER_ID
-            or PLAYER_ID in pid
-            or pid[0:10] in PLAYER_ID
+    if ((pid in PLAYER_ID
+         or PLAYER_ID in pid
+         or pid[0:13] in PLAYER_ID) and "child" in pid
     ):
         return True
     return False
@@ -136,9 +135,9 @@ def get_lock_bombs(base_map: Map):
         is_safe = bomb.get("remainTime", 0) > 1300
         is_warning = 1000 < bomb.get("remainTime", 0) < 1300
 
-        if bomb.get("playerId") in PLAYER_ID:
+        if bomb.get("playerId") in PLAYER_ID and bomb.get("remainTime", 0) > 0:
             PLAYER.has_bomb = False
-        elif check_id_child(bomb.get("playerId")):
+        elif check_id_child(bomb.get("playerId")) and bomb.get("remainTime", 0) > 0:
             PLAYER_CHILD.has_bomb = False
 
         for i in bomb_range:
@@ -340,6 +339,11 @@ list_skip = [
     "x"
 ]
 
+CHECKPOINT_PLAYER = {
+    "action_point" : 1,
+    "time_point": 0
+}
+
 ACTION_PER_POINT_PLAYER = 1
 ACTION_PER_POINT_CHILD = 1
 
@@ -386,6 +390,7 @@ def ticktack_handler(data):
 
         if PLAYER.has_full_marry_items and HAVE_CHILD == False and ENEMY_NOT_IN_MAP == False:
             emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
+            return
         if not PLAYER.has_transform:
             set_road_to_badge()
         if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
@@ -394,7 +399,7 @@ def ticktack_handler(data):
         if act_list:
             process_emit_action(act_list)
     # CHILD
-    #HAVE_CHILD = True
+    #HAVE_CHILD = True # enable khi chỉ muon run child
     if (
             (COUNT_POINT_CHILD == ACTION_PER_POINT_CHILD
              or data["timestamp"] - TIME_POINT_CHILD_OWN > RANGE_TIME_OWN
@@ -415,13 +420,13 @@ def ticktack_handler(data):
             paste_update(data)
         TIME_POINT_CHILD = data["timestamp"]
         if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
-            set_road_to_point(PLAYER_CHILD.position)
+            set_road_to_point(PLAYER_CHILD.position,child=True)
         act_list = get_action(10)
         if act_list:
             process_emit_action(act_list, child=True)
 
         print("end", int(datetime.now().timestamp() * 1000))
-        #sys.exit()
+        # sys.exit()
 
 
 # SOCKET HANDLER
@@ -509,7 +514,8 @@ def event_handle(data):
     #         lock.release()
     # return
     # print(f"Skipping event {data['id']} because handler is busy")
-    #todo: fix sao cho cac event ko overlap
+    # todo: fix sao cho cac event ko overlap
+
 
 @sio.on(event=DRIVE_EVENT)
 def event_handle(data):
