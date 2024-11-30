@@ -29,6 +29,10 @@ class Map:
     def get_pos_spoils(self) -> list:
         return [[spoil["row"], spoil["col"]] for spoil in self.spoils]
 
+    @property
+    def get_pos_bombs(self) -> list:
+        return [[bomb["row"], bomb["col"]] for bomb in self.bombs]
+
 
 @dataclass
 class Player:

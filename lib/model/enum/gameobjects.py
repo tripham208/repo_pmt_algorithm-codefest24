@@ -93,12 +93,12 @@ class Tag(Enum):
         "player:stop-moving",
         "bomb:setup",
         "wooden-pestle:setup",
+        "player:moving-banned",
     ]
 
     TAG_REPLAY = [
         "player:outto-wedding-room",
         "player:back-to-playground",
-        "player:moving-banned",
         "player:stun-timeout"
     ]
 

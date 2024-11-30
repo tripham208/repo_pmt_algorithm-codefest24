@@ -282,15 +282,7 @@ def attack_action(
         if player.transform_type == Objects.MOUNTAIN_GOD.value:
             pass
         else:
-            if len(pos_list) >= 2:
-                copy_list = [pos for pos in pos_list]
-                if len(copy_list) >= 2:
-                    face = get_face(copy_list[-2], copy_list[-1])
-            else:
-                if locker.expect_pos == player.position:
-                    face = locker.expect_face
-            if face == Face.UNKNOWN.value:
-                return
+            pass
 
     if Attack.WOODEN.value in act_list:
         pass
@@ -312,6 +304,7 @@ def can_go_new_pos(new_pos_player, base_map: Map, locker: Locker) -> bool:
     if (
             new_pos_player in locker.danger_pos_lock_max
             or new_pos_player in locker.pos_lock
+            or new_pos_player in base_map.get_pos_bombs
             or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.MAX_BLOCK.value
     ):
         return False

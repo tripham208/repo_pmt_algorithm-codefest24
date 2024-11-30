@@ -93,3 +93,11 @@ def test_a():
 
     print(a[0:3])
     print(int(datetime.datetime.now().timestamp() * 1000))
+
+def test_b():
+    print(not False)
+    a =[]
+    if a:
+        print("blank")
+    else:
+        print("no blank")

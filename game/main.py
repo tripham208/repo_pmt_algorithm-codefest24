@@ -32,9 +32,9 @@ ENEMY_NOT_IN_MAP = True
 
 
 def check_id_child(pid) -> bool:
-    if ((pid in PLAYER_ID
-         or PLAYER_ID in pid
-         or pid[0:13] in PLAYER_ID) and "child" in pid
+    if (
+            (pid in PLAYER_ID or pid[0:13] in PLAYER_ID)
+            and "child" in pid
     ):
         return True
     return False
@@ -47,8 +47,7 @@ def paste_player_data(players):
 
     for player in players:
         print(player)
-        if player["id"] in PLAYER_ID and player.get("isChild", False) == False:
-            # print("paste_player")
+        if player["id"] in PLAYER_ID and not player.get("isChild", False):
             PLAYER.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             PLAYER.power = player["power"]
             PLAYER.score = player["score"]
@@ -69,14 +68,14 @@ def paste_player_data(players):
                 PLAYER.horse = player["nineManeHairHorse"]
                 if PLAYER.owned_marry_items == 5:
                     PLAYER.has_full_marry_items = True
-        elif check_id_child(player["id"]) and player["isChild"] == True:
+        elif check_id_child(player["id"]) and player.get("isChild", False):
             # print("paste_player Child", player["currentPosition"])
             PLAYER_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             PLAYER_CHILD.power = player["power"]
             PLAYER_CHILD.cur_weapon = player["currentWeapon"]
             PLAYER_CHILD.owner_weapon = player["ownerWeapon"]
             HAVE_CHILD = True
-        elif player["id"] not in PLAYER_ID and player.get("isChild", False) == True:
+        elif player["id"] not in PLAYER_ID and player.get("isChild", False):
             # print("paste_ENEMY_CHILD")
             ENEMY_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             ENEMY_CHILD.power = player["power"]
@@ -86,6 +85,7 @@ def paste_player_data(players):
             ENEMY.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             ENEMY.power = player["power"]
             ENEMY.has_transform = player["hasTransform"]
+            ENEMY.transform_type = player.get("transformType", 0)
             ENEMY.is_stun = player["isStun"]
             ENEMY_NOT_IN_MAP = False
 
@@ -170,9 +170,6 @@ def set_road_to_badge():
     MAP.badges = badges
     for pos in badges:
         tmp_dis = euclid_distance(PLAYER.position, pos)
-        # EVALUATED_MAP.set_val_player(pos, StatusPoint.BADGE.value)
-
-        # print(pos, tmp_dis)
         if dis > tmp_dis:
             dis = tmp_dis
             nearest_badge = pos
@@ -274,41 +271,16 @@ COUNT_UNLOCK = 0
 
 
 def process_emit_action(act_list, child: bool = False):
-    global ACTION_PER_POINT_PLAYER, COUNT_POINT_PLAYER
-    global ACTION_PER_POINT_CHILD, COUNT_POINT_CHILD
+    global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
 
     info = get_info_action(act_list)
     if info["switch"]:
         emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value, child=child))
 
     if not child:
-        if info["reface"]:
-            direction = gen_direction(act_list)
-            ACTION_PER_POINT_PLAYER = len(direction)
-        elif info["attack"] in Attack.BASIC_ATTACKS.value:
-            direction = gen_direction(act_list)
-            ACTION_PER_POINT_PLAYER = info["drop"]
-        else:
-            direction = gen_direction(act_list[0:info["drop"]])
-            ACTION_PER_POINT_PLAYER = info["drop"]
-
-        ACTION_PER_POINT_PLAYER = max(ACTION_PER_POINT_PLAYER, 1)
-        print(ACTION_PER_POINT_PLAYER)
-        COUNT_POINT_PLAYER = 0
+        direction = handle_info_action(CHECKPOINT_PLAYER, info, act_list)
     else:
-        print("process_emit_action set child")
-        if info["reface"]:
-            direction = gen_direction(act_list)
-            ACTION_PER_POINT_CHILD = len(direction)
-        elif info["attack"] in Attack.BASIC_ATTACKS.value:
-            direction = gen_direction(act_list)
-            ACTION_PER_POINT_CHILD = info["drop"]
-        else:
-            direction = gen_direction(act_list[0:info["drop"]])
-            ACTION_PER_POINT_CHILD = info["drop"]
-
-        ACTION_PER_POINT_CHILD = max(ACTION_PER_POINT_CHILD, 1)
-        COUNT_POINT_CHILD = 0
+        direction = handle_info_action(CHECKPOINT_CHILD, info, act_list)
 
     print(act_list)
     # DIRECTION_HIST.append(direction)
@@ -317,20 +289,37 @@ def process_emit_action(act_list, child: bool = False):
     emit_drive(drive_data)
 
 
+def handle_info_action(checkpoint: dict, info: dict, act_list):
+    if info["reface"]:
+        direction = gen_direction(act_list)
+        checkpoint["action_per_emit"] = len(direction)
+    elif info["attack"] in Attack.BASIC_ATTACKS.value:
+        direction = gen_direction(act_list)
+        checkpoint["action_per_emit"] = info["drop"]
+    else:
+        direction = gen_direction(act_list[0:info["drop"]])
+        checkpoint["action_per_emit"] = info["drop"]
+
+    checkpoint["action_per_emit"] = max(checkpoint["action_per_emit"], 1)
+    checkpoint["count_action"] = 0
+
+    return direction
+
+
 def dedup_action(action, action_v2):
-    global ACTION_PER_POINT_PLAYER
+    global CHECKPOINT_PLAYER
     direction = gen_direction(action)
     DIRECTION_HIST_PLAYER.append(direction)
     print(DIRECTION_HIST_PLAYER)
     if len(DIRECTION_HIST_PLAYER) >= 6:
         if DIRECTION_HIST_PLAYER.count(direction) >= 3:
-            ACTION_PER_POINT_PLAYER = len(action_v2)
+            CHECKPOINT_PLAYER["action_per_emit"] = len(action_v2)
             direction = gen_direction(action_v2)
             DIRECTION_HIST_PLAYER.pop()
             DIRECTION_HIST_PLAYER.append(direction)
         DIRECTION_HIST_PLAYER.pop(0)
-    if len(direction) != ACTION_PER_POINT_PLAYER:  # re verify
-        ACTION_PER_POINT_PLAYER = len(direction)
+    if len(direction) != CHECKPOINT_PLAYER["action_per_emit"]:  # re verify
+        CHECKPOINT_PLAYER["action_per_emit"] = len(direction)
     # pr_red("line 400 new direction:" + direction)
     return direction
 
@@ -340,50 +329,45 @@ list_skip = [
 ]
 
 CHECKPOINT_PLAYER = {
-    "action_point" : 1,
-    "time_point": 0
+    "action_per_emit": 1,
+    "timestamp": 0,
+    "timestamp_own": 0,
+    "count_action": 0
+}
+CHECKPOINT_CHILD = {
+    "action_per_emit": 1,
+    "timestamp": 0,
+    "timestamp_own": 0,
+    "count_action": 0
 }
 
-ACTION_PER_POINT_PLAYER = 1
-ACTION_PER_POINT_CHILD = 1
-
-TIME_POINT_PLAYER = 0
-TIME_POINT_CHILD = 0
-
-TIME_POINT_PLAYER_OWN = 0
-TIME_POINT_CHILD_OWN = 0
-
-COUNT_POINT_PLAYER = 0
-COUNT_POINT_CHILD = 0
-
-COUNT_UPDATE = 0
-COUNT_ST = 0
 RANGE_TIME = 550
 RANGE_TIME_OWN = 400
 
-DEDUP_EVENT_PLAYER = 0
+
+def check_valid_event(checkpoint: dict, data):
+    return (
+            checkpoint["count_action"] == checkpoint["action_per_emit"]
+            or data["timestamp"] - checkpoint["timestamp_own"] > RANGE_TIME_OWN
+            or data["timestamp"] - checkpoint["timestamp"] > RANGE_TIME
+    )
 
 
 def ticktack_handler(data):
     global HAVE_CHILD
-    global TIME_POINT_PLAYER
-    global TIME_POINT_CHILD
+    global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if (
-            COUNT_POINT_PLAYER == ACTION_PER_POINT_PLAYER
-            or data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN
-            or data["timestamp"] - TIME_POINT_PLAYER > RANGE_TIME
-    ):
-        pass
+    if check_valid_event(CHECKPOINT_PLAYER, data):
         pr_red("process PLAYER")
-        if COUNT_POINT_PLAYER == ACTION_PER_POINT_PLAYER:
+
+        if CHECKPOINT_PLAYER["count_action"] == CHECKPOINT_PLAYER["action_per_emit"]:
             pr_yellow("player trigger by point")
-        if data["timestamp"] - TIME_POINT_PLAYER_OWN > RANGE_TIME_OWN:
+        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"] > RANGE_TIME_OWN:
             pr_yellow("player trigger by timeout own")
-        if data["timestamp"] - TIME_POINT_PLAYER > RANGE_TIME:
+        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp"] > RANGE_TIME:
             pr_yellow("player trigger by timeout")
 
-        TIME_POINT_PLAYER = data["timestamp"]
+        CHECKPOINT_PLAYER["timestamp"] = data["timestamp"]
         if not is_paste_update:
             paste_update(data)
             is_paste_update = True
@@ -391,36 +375,36 @@ def ticktack_handler(data):
         if PLAYER.has_full_marry_items and HAVE_CHILD == False and ENEMY_NOT_IN_MAP == False:
             emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
             return
+
         if not PLAYER.has_transform:
             set_road_to_badge()
+
         if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
             set_road_to_point(PLAYER.position)
+
         act_list = get_action(1)
         if act_list:
             process_emit_action(act_list)
     # CHILD
-    #HAVE_CHILD = True # enable khi chỉ muon run child
-    if (
-            (COUNT_POINT_CHILD == ACTION_PER_POINT_CHILD
-             or data["timestamp"] - TIME_POINT_CHILD_OWN > RANGE_TIME_OWN
-             or data["timestamp"] - TIME_POINT_CHILD > RANGE_TIME
-            ) and HAVE_CHILD
-    ):
+    # HAVE_CHILD = True # enable khi chỉ muon run child
+    if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD:
         pr_red("process child")
-
         print("start", int(datetime.now().timestamp() * 1000))
 
-        if COUNT_POINT_CHILD == ACTION_PER_POINT_CHILD:
+        if CHECKPOINT_CHILD["count_action"] == CHECKPOINT_CHILD["action_per_emit"]:
             pr_yellow("CHILD trigger by point")
-        if data["timestamp"] - TIME_POINT_CHILD_OWN > RANGE_TIME_OWN:
-            pr_yellow(f"CHILD trigger by timeout own{data["timestamp"], TIME_POINT_CHILD_OWN}")
-        if data["timestamp"] - TIME_POINT_CHILD > RANGE_TIME:
+        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_own"] > RANGE_TIME_OWN:
+            pr_yellow(f"CHILD trigger by timeout own{data["timestamp"], CHECKPOINT_CHILD["timestamp_own"]}")
+        if data["timestamp"] - CHECKPOINT_CHILD["timestamp"] > RANGE_TIME:
             pr_yellow("CHILD trigger by timeout")
+
         if not is_paste_update:
             paste_update(data)
-        TIME_POINT_CHILD = data["timestamp"]
+
+        CHECKPOINT_CHILD["timestamp"] = data["timestamp"]
+
         if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
-            set_road_to_point(PLAYER_CHILD.position,child=True)
+            set_road_to_point(PLAYER_CHILD.position, child=True)
         act_list = get_action(10)
         if act_list:
             process_emit_action(act_list, child=True)
@@ -431,6 +415,14 @@ def ticktack_handler(data):
 
 # SOCKET HANDLER
 sio = socketio.Client()
+
+
+def check_ticktack_event(checkpoint: dict, data):
+    checkpoint["timestamp_own"] = data["timestamp"]
+
+    if data["tag"] in Tag.TAG_STOP.value:
+        checkpoint["timestamp"] = data["timestamp"]
+        checkpoint["count_action"] += 1
 
 
 @sio.event
@@ -457,47 +449,25 @@ lock = threading.Lock()
 
 @sio.on(event=TICKTACK_EVENT)
 def event_handle(data):
-    global RUNNING, DEDUP_EVENT_PLAYER
-    global TIME_POINT_CHILD_OWN, TIME_POINT_CHILD, COUNT_POINT_CHILD
-    global TIME_POINT_PLAYER_OWN, TIME_POINT_PLAYER, COUNT_POINT_PLAYER
+    global RUNNING
+    global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
 
     player_id_of_event = data.get("player_id", "no id")
     print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
 
     if (player_id_of_event in PLAYER_ID
-            or PLAYER_ID in player_id_of_event
             or player_id_of_event[0:10] in PLAYER_ID
     ):
-
-        # print("event by player", data["timestamp"], TIME_POINT_PLAYER_OWN, data["timestamp"] - TIME_POINT_PLAYER_OWN,
-        #       RANGE_TIME_OWN, "----------", TIME_POINT_PLAYER, data["timestamp"] - TIME_POINT_PLAYER, RANGE_TIME)
+        # print("event by player", data["timestamp"], CHECKPOINT_PLAYER["timestamp_own"], data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"],
+        #       RANGE_TIME_OWN, "----------", timestamp_PLAYER, data["timestamp"] - timestamp_PLAYER, RANGE_TIME)
 
         if "child" in player_id_of_event and HAVE_CHILD:
-
-            TIME_POINT_CHILD_OWN = data["timestamp"]
-
-            if data["tag"] in Tag.TAG_STOP.value:
-
-                if DEDUP_EVENT_PLAYER == data["id"]:
-                    pass
-                else:
-                    DEDUP_EVENT_PLAYER = data["id"]
-                    TIME_POINT_CHILD = data["timestamp"]
-                    COUNT_POINT_CHILD += 1
-                    print("line 350:", data["id"], COUNT_POINT_CHILD, " in ", ACTION_PER_POINT_CHILD)
+            check_ticktack_event(CHECKPOINT_CHILD, data)
+            print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
 
         elif "child" not in player_id_of_event:
-            TIME_POINT_PLAYER_OWN = data["timestamp"]
-
-            if data["tag"] in Tag.TAG_STOP.value:
-
-                if DEDUP_EVENT_PLAYER == data["id"]:
-                    pass
-                else:
-                    DEDUP_EVENT_PLAYER = data["id"]
-                    TIME_POINT_PLAYER = data["timestamp"]
-                    COUNT_POINT_PLAYER += 1
-                    print("line 350:", data["id"], COUNT_POINT_PLAYER, " in ", ACTION_PER_POINT_PLAYER)
+            check_ticktack_event(CHECKPOINT_PLAYER, data)
+            print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
     # if not RUNNING:
     #     RUNNING = True
     #     ticktack_handler(data)
@@ -522,6 +492,11 @@ def event_handle(data):
     pass
 
 
+@sio.on(event=ACTION_EVENT)
+def event_handle(data):
+    pass
+
+
 def connect_server():
     sio.connect(URL)
 
@@ -535,7 +510,7 @@ def emit_join_game(game_id: str, player_id: str):
 
 
 def emit_drive(data: dict):
-    print(data, "player", ACTION_PER_POINT_PLAYER, "child", ACTION_PER_POINT_CHILD)
+    print(data, "player", CHECKPOINT_PLAYER["action_per_emit"], "child", CHECKPOINT_CHILD["action_per_emit"])
     emit_event(event=DRIVE_EVENT, data=data)
 
 
