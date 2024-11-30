@@ -65,6 +65,8 @@ def max_val(
         locker.expect_pos = response.expect_pos
         locker.expect_face = response.expect_face
 
+        locker.another["hammer"] = response.another.get("hammer")
+
     pr_red(f"end max_val:{response.value} {act_list}")
     return act_list
 
@@ -157,6 +159,16 @@ def gen_bomb(player: Player):
     }
 
 
+def gen_hammer(pos):
+    return {
+        "destination": pos
+    }
+
+
+def deepcopy_env(base_map, pos_list, act_list):
+    return deepcopy(base_map), deepcopy(pos_list), deepcopy(act_list)
+
+
 def attack_action(
         actions: list,
         base_map: Map,
@@ -196,14 +208,16 @@ def attack_action(
         for act_atk in WeaponRange.WOODEN.value:
             pos_w_atk = [sum(i) for i in zip(player.position, act_atk)]
             # print(pos_w_atk, base_map.get_obj_map(pos_w_atk))
-            if base_map.get_obj_map(pos_w_atk) == 3:
-                new_base_map = deepcopy(base_map)
+            if base_map.get_obj_map(pos_w_atk) == 3 or pos_w_atk == enemy.position:
                 new_player = deepcopy(player)
-                new_pos_list = deepcopy(pos_list)
-                new_act_list = deepcopy(act_list)
+                new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
 
                 new_base_map.set_val_map(pos_w_atk, 0)
-                new_base_map.up_point += StatusPoint.BRICK_WALL.value
+                if base_map.get_obj_map(pos_w_atk) == 3:
+                    new_base_map.up_point += StatusPoint.BRICK_WALL.value
+                else:
+                    new_base_map.up_point += StatusPoint.BOMB_ENEMY.value if not enemy.is_stun else StatusPoint.BALK.value
+
                 if cur_weapon == 2:
                     new_act_list.append(Attack.SWITCH_WEAPON.value)
 
@@ -245,10 +259,8 @@ def attack_action(
         if not check_bomb_have_target(bomb, base_map, enemy, enemy_child):
             return
 
-        new_base_map = deepcopy(base_map)
+        new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
         new_base_map.bombs.append(bomb)
-        new_pos_list = deepcopy(pos_list)
-        new_act_list = deepcopy(act_list)
 
         if cur_weapon == 1:
             new_act_list.append(Attack.SWITCH_WEAPON.value)
@@ -277,24 +289,73 @@ def attack_action(
     def god_attack():
         nonlocal face, response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
+        have_child = False if enemy_child.position == [0, 0] else True
+
         distance_enemy = euclid_distance(player.position, enemy.position)
         distance_child = euclid_distance(player.position, enemy_child.position)
+        # todo máu nhiều hơn phang luôn
         if player.transform_type == Objects.MOUNTAIN_GOD.value:
-            pass
+            if 3 <= distance_enemy < 9:  # 9
+                new_player = deepcopy(player)
+                new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
+
+                new_act_list.append(Attack.HAMMER.value)
+                new_base_map.hammers.append(gen_hammer(enemy.position))
+
+                tmp_response = get_max_val(
+                    actions=actions,
+                    base_map=new_base_map,
+                    evaluated_map=evaluated_map,
+                    locker=locker,
+                    player=new_player,
+                    enemy=enemy,
+                    player_another=player_another,
+                    enemy_child=enemy_child,
+                    level=level + 1,
+                    pos_list=new_pos_list,
+                    act_list=new_act_list,
+                )
+
+                # print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                if response.value < tmp_response.value:
+                    response = tmp_response
+                    response.another["hammer"] = enemy.position
+            if 3 <= distance_child < 9 and have_child:
+
+                new_player = deepcopy(player)
+                new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
+
+                new_act_list.append(Attack.HAMMER.value)
+                new_base_map.hammers.append(gen_hammer(enemy_child.position))
+
+                tmp_response = get_max_val(
+                    actions=actions,
+                    base_map=new_base_map,
+                    evaluated_map=evaluated_map,
+                    locker=locker,
+                    player=new_player,
+                    enemy=enemy,
+                    player_another=player_another,
+                    enemy_child=enemy_child,
+                    level=level + 1,
+                    pos_list=new_pos_list,
+                    act_list=new_act_list,
+                )
+
+                # print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                if response.value < tmp_response.value:
+                    response = tmp_response
+                    response.another["hammer"] = enemy.position
         else:
             pass
 
-    if Attack.WOODEN.value in act_list:
-        pass
-    else:
+    if Attack.WOODEN.value not in act_list:
         wooden_attack()
 
-    if Attack.BOMB.value in act_list:
-        pass
-    elif 2 in player.owner_weapon and player.has_bomb:
+    if Attack.BOMB.value not in act_list and 2 in player.owner_weapon and player.has_bomb:
         bomb_attack()
 
-    if Player.has_transform and False:
+    if player.has_transform and player.time_to_use_special_weapons > 0 and False:
         god_attack()
 
     return response
@@ -333,8 +394,7 @@ def move_action(
         return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
 
     new_player = deepcopy(player)
-    new_pos_list = deepcopy(pos_list)
-    new_act_list = deepcopy(act_list)
+    new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
 
     new_player.position = new_pos_player
     new_act_list.append(current_action)

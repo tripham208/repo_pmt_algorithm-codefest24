@@ -26,6 +26,8 @@ ENEMY_CHILD = Player(position=[0, 0])
 
 LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=Objects.A_STAR_PHASE1_LOCK.value,
                 pos_lock=[])
+LOCKER_CHILD = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=Objects.A_STAR_PHASE1_LOCK.value,
+                      pos_lock=[])
 
 HAVE_CHILD = False
 ENEMY_NOT_IN_MAP = True
@@ -88,6 +90,19 @@ def paste_player_data(players):
             ENEMY.transform_type = player.get("transformType", 0)
             ENEMY.is_stun = player["isStun"]
             ENEMY_NOT_IN_MAP = False
+    print(ENEMY)
+    print(ENEMY_CHILD)
+
+
+def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
+    locker.pos_lock = pos_lock
+    locker.danger_pos_lock_max = lock_danger
+    locker.danger_pos_lock_bfs = lock_danger
+    locker.warning_pos_bfs = pos_warning
+    locker.warning_pos_max = pos_warning
+    locker.all_bomb_pos = pos_all
+    # renew
+    locker.another = {}
 
 
 def paste_update(data):
@@ -96,13 +111,15 @@ def paste_update(data):
     :param data:
     :return:
     """
-    global MAP, EVALUATED_MAP, LOCKER
+    global MAP, EVALUATED_MAP, LOCKER, LOCKER_CHILD
 
     MAP.cols = data["map_info"]["size"]["cols"]
     MAP.rows = data["map_info"]["size"]["rows"]
     MAP.map = data["map_info"]["map"]
     MAP.bombs = data["map_info"]["bombs"]
     MAP.spoils = data["map_info"]["spoils"]
+    MAP.hammers = data["map_info"]["weaponHammers"]
+    MAP.winds = data["map_info"]["weaponWinds"]
 
     paste_player_data(players=data["map_info"]["players"])
 
@@ -110,12 +127,13 @@ def paste_update(data):
     EVALUATED_MAP.set_point_map(base_map=MAP, status=PLAYER)
 
     lock_danger, pos_warning, pos_all = get_lock_bombs(base_map=MAP)
-    LOCKER.pos_lock = lock_danger + [PLAYER_CHILD.position, ENEMY.position, ENEMY_CHILD.position]
-    LOCKER.danger_pos_lock_max = lock_danger
-    LOCKER.danger_pos_lock_bfs = lock_danger
-    LOCKER.warning_pos_bfs = pos_warning
-    LOCKER.warning_pos_max = pos_warning
-    LOCKER.all_bomb_pos = pos_all
+
+    pos_lock_player = lock_danger + [PLAYER_CHILD.position, ENEMY.position, ENEMY_CHILD.position]
+    pos_lock_child = lock_danger + [PLAYER.position, ENEMY.position, ENEMY_CHILD.position]
+
+    paste_locker(LOCKER, pos_lock_player, lock_danger, pos_warning, pos_all)
+    paste_locker(LOCKER_CHILD, pos_lock_child, lock_danger, pos_warning, pos_all)
+
     # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
 
     pr_yellow(f"spoil {MAP.spoils}")
@@ -237,7 +255,7 @@ def get_action(case, param: dict = None) -> list:
             x = max_val(
                 base_map=MAP,
                 evaluated_map=EVALUATED_MAP,
-                locker=LOCKER,
+                locker=LOCKER_CHILD,
                 player=PLAYER_CHILD,
                 enemy=ENEMY,
                 player_another=PLAYER,
@@ -247,10 +265,10 @@ def get_action(case, param: dict = None) -> list:
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
             return x
         case 20:
-            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
+            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP, eval_map=EVALUATED_MAP)
         case 40:
             return a_star_optimized(
-                start=PLAYER_CHILD.position, locker=LOCKER, base_map=MAP,
+                start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP,
                 target=param.get("target", PLAYER_CHILD.position)
             )
 

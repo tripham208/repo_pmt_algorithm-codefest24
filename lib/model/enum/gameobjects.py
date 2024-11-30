@@ -113,6 +113,9 @@ class Time(Enum):
     REMAIN_TIME_LOCK = 600
     TIME_UNLOCK = 300
 
+    HAMMER = 10000
+    WIND = 5000
+
 
 class Cell(Enum):
     """

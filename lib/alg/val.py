@@ -42,13 +42,16 @@ def calculate_bombs(base_map: Map, player: Player):
 
     return point, pos_danger, pos_warning
 
+
 def calculate_hammer(base_map: Map) -> list:
     pos_danger = []
-    pos_warning = []
     if base_map.hammers is not None:
         for hammer in base_map.hammers:
-            pass
+            destination = hammer.get("destination", [0, 0])
+            pos_danger += [[sum(i) for i in zip(destination, pos)] for pos in AroundRange.LV2.value]
+
     return pos_danger
+
 
 def calculate_wind(base_map: Map) -> list:
     pos_danger = []
@@ -101,7 +104,7 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
                 if x in pos_danger:
                     bonus += get_point_match_step_bomb(idx)
                 if x in pos_warning:
-                    bonus += get_point_match_step_bomb(idx)/2
+                    bonus += get_point_match_step_bomb(idx) / 2
     # bonus - optimize step pick spoil
 
     if pos_list:
@@ -115,6 +118,18 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
             bonus -= 100
     value += bonus
     value += bonus_badge
-    #print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} {bonus_badge}", )
-    #todo enable god attack
+    # print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} {bonus_badge}", )
+    # todo enable god attack
+
+    god_pos = calculate_hammer(base_map)
+    god_pos += calculate_wind(base_map)
+    if player.position in god_pos:
+        value += StatusPoint.DANGER.value
+    if player_another.position in god_pos:
+        value += StatusPoint.DANGER.value
+    if enemy.position in god_pos:
+        value += StatusPoint.GOD_ENEMY.value
+    if enemy_child.position in god_pos:
+        value += StatusPoint.GOD_ENEMY.value
+
     return value

@@ -1,7 +1,7 @@
 import datetime
 from copy import deepcopy
 
-from lib.model.enum.action import FaceAction
+from lib.model.enum.action import FaceAction, Attack
 from lib.model.enum.range import BombRange
 from lib.utils.map import create_map_zero
 
@@ -101,3 +101,11 @@ def test_b():
         print("blank")
     else:
         print("no blank")
+    c ={}
+    d ={}
+    c["d"] = d.get("d")
+    print( c["d"])
+
+    match [6,6]:
+        case Attack.SWITCH_WEAPON.value:
+            print("match")
