@@ -57,6 +57,8 @@ class Attack(Enum):
     GOD_ATTACKS = [HAMMER, WIND]
 
 
+
+
 def get_move_out_zone(region):
     zone_map = {
         1: NextMoveZone.Z1.value,

@@ -27,6 +27,7 @@ def gen_direction(list_action: list[list]):
                 direction += "x"
             case [2, 2]:
                 direction += "b" #wooden
+                break
             case [3, 3]:
                 direction += "b" #bomb
             case FaceAction.UP_V2.value:
@@ -48,7 +49,7 @@ def gen_drive_data(direction: str, child: bool = False) -> dict:
     return {"direction": direction, "characterType": "child"} if child else {"direction": direction}
 
 
-def gen_action_data(action: str, mountain_god: bool = False, child: bool = False, payload=None):
+def gen_action_data(action: str, mountain_god: bool = True, child: bool = False, payload=None):
     match [action, mountain_god, child]:
         case ["switch weapon", _, True]:
             return {"action": action, "characterType": "child"}

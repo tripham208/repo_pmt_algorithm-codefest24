@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from lib.model.enum.gameobjects import MarryItem, Objects, StatusPoint
-from lib.model.enum.range import AroundRange
+from lib.model.enum.range import AroundRange, WeaponRange
 from lib.utils.map import create_map_zero
 
 
@@ -32,6 +32,36 @@ class Map:
     @property
     def get_pos_bombs(self) -> list:
         return [[bomb["row"], bomb["col"]] for bomb in self.bombs]
+
+    @property
+    def get_pos_hammers(self) -> list:
+        pos_danger = []
+        if self.hammers is not None:
+            for hammer in self.hammers:
+                destination = hammer.get("destination", {
+                    "col": 0,
+                    "row": 0,
+                })
+                destination = [destination["row"], destination["col"]]
+                pos_danger += [[sum(i) for i in zip(destination, pos)] for pos in AroundRange.LV2.value]
+
+        return pos_danger
+
+    @property
+    def get_pos_winds(self) -> list:
+        pos_danger = []
+        if self.winds is not None:
+            for wind in self.winds:
+                direction = wind.get("direction", 0)
+                if direction != 0:
+                    cur_pos = [wind["currentRow"], wind["currentCol"]]
+                    wind_range = WeaponRange[f'WIND_{direction}'].value
+                    next_post = [sum(i) for i in zip(cur_pos, wind_range)]
+                    while self.get_obj_map(next_post) not in Objects.BOMB_NO_DESTROY.value:
+                        pos_danger.append(next_post)
+                        next_post = [sum(i) for i in zip(next_post, wind_range)]
+
+        return pos_danger
 
 
 @dataclass
@@ -99,8 +129,6 @@ class EvaluatedMap:
     player_map: list
     enemy_map: list
     road_map: list
-
-
 
     def get_evaluated_map(self, pos_player: list, pos_enemy: list,
                           pos_player_child: list, pos_enemy_child: list):
@@ -190,10 +218,9 @@ class ValResponse:
     pos_list: list
     act_list: list
     value: int = StatusPoint.MIN.value
+    weap:int = 0
 
     expect_pos: list = None
     expect_face: int = 0
     # use on-demand
-    another: dict = None
-
-
+    another: dict = field(default_factory=lambda: {})

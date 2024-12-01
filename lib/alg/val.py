@@ -15,7 +15,7 @@ def calculate_bombs(base_map: Map, player: Player):
         power = bomb.get("power", 0)
 
         bomb_range = BombRange[f'LV{power}'].value
-        pos_danger += [[bomb["row"], bomb["col"]]]
+        pos_danger += [[bomb["row"], bomb["col"]]] # todo neu impl tu sat
         is_warning = bomb.get("remainTime", 0) > 1000
         will_destroy = bomb.get("remainTime", 0) < 500
         new = bomb.get("remainTime", 0) == 2000
@@ -43,24 +43,6 @@ def calculate_bombs(base_map: Map, player: Player):
     return point, pos_danger, pos_warning
 
 
-def calculate_hammer(base_map: Map) -> list:
-    pos_danger = []
-    if base_map.hammers is not None:
-        for hammer in base_map.hammers:
-            destination = hammer.get("destination", [0, 0])
-            pos_danger += [[sum(i) for i in zip(destination, pos)] for pos in AroundRange.LV2.value]
-
-    return pos_danger
-
-
-def calculate_wind(base_map: Map) -> list:
-    pos_danger = []
-    if base_map.winds is not None:
-        for wind in base_map.winds:
-            pass
-    return pos_danger
-
-
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         player: Player, enemy: Player, player_another: Player, enemy_child: Player, pos_list: list,
         act_list: list) -> int:
@@ -73,12 +55,16 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
     value += point
     bonus = 0
     bonus_badge = 0  # [[9, 19], [9, 22]]
+    deny_bomb = 0
     if not player.has_transform and base_map.badges is not None:
         for badge in base_map.badges:
             if badge == pos_list[-1]:
                 print(len(pos_list))
                 bonus_badge = StatusPoint.BADGE.value - ((len(pos_list) - 1) * 400)
-
+    # print(player)
+    # print(value)
+    # print(pos_danger)
+    # print(pos_warning)
     if base_map.bombs:
         if player.position in pos_danger:
             value += StatusPoint.DANGER.value
@@ -87,24 +73,23 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         if player.position in pos_warning:
             value += StatusPoint.WARNING.value
         if player_another.position in pos_warning:
-            value += StatusPoint.WARNING.value
-        if enemy.has_transform and False:  # todo: unlock bomb enemy
+            value += StatusPoint.DANGER.value
+        if enemy.has_transform:  # todo: unlock bomb enemy
             if (enemy.position in pos_danger or enemy.position in pos_warning) and not enemy.is_stun:
                 value += StatusPoint.BOMB_ENEMY.value
             if (enemy_child.position in pos_danger or enemy_child.position in pos_warning) and not enemy_child.is_stun:
                 value += StatusPoint.BOMB_ENEMY.value
         else:
-            if (enemy.position in pos_danger or enemy.position in pos_warning) and not enemy.is_stun:
-                value -= StatusPoint.BOMB_ENEMY.value
-            if (enemy_child.position in pos_danger or enemy_child.position in pos_warning) and not enemy_child.is_stun:
+            if enemy.position in pos_danger or enemy.position in pos_warning:
                 value -= StatusPoint.BOMB_ENEMY.value
         # bonus - optimize step in bomb range
+
         if pos_list:
             for idx, x in enumerate(pos_list, start=1):
                 if x in pos_danger:
-                    bonus += get_point_match_step_bomb(idx)
+                    deny_bomb += get_point_match_step_bomb(idx)
                 if x in pos_warning:
-                    bonus += get_point_match_step_bomb(idx) / 2
+                    deny_bomb += get_point_match_step_bomb(idx) / 2
     # bonus - optimize step pick spoil
 
     if pos_list:
@@ -118,18 +103,26 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
             bonus -= 100
     value += bonus
     value += bonus_badge
-    # print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} {bonus_badge}", )
-    # todo enable god attack
+    value += deny_bomb
 
-    god_pos = calculate_hammer(base_map)
-    god_pos += calculate_wind(base_map)
+    god_pos = base_map.get_pos_hammers
+    god_pos += base_map.get_pos_winds
+    print(god_pos)
     if player.position in god_pos:
         value += StatusPoint.DANGER.value
     if player_another.position in god_pos:
         value += StatusPoint.DANGER.value
-    if enemy.position in god_pos:
-        value += StatusPoint.GOD_ENEMY.value
-    if enemy_child.position in god_pos:
-        value += StatusPoint.GOD_ENEMY.value
+    if enemy.has_transform:
+        if enemy.position in god_pos:
+            value += StatusPoint.GOD_ENEMY.value
+        if enemy_child.position in god_pos:
+            value += StatusPoint.GOD_ENEMY.value
+    else:
+        if enemy.position in god_pos:
+            value -= StatusPoint.BOMB_ENEMY.value
+        if enemy_child.position in god_pos:
+            value -= StatusPoint.BOMB_ENEMY.value
+
+    #print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} badge {bonus_badge} deny_bomb {deny_bomb} => {value}")
 
     return value

@@ -54,11 +54,11 @@ class StatusPoint(Enum):
 
     # object
     BRICK_WALL = 300
-    BALK = 500
+    BALK = 1000
 
     # bonus
     BOMB_ENEMY = 2000
-    GOD_ENEMY = 3000
+    GOD_ENEMY = 4000
 
 
 class Weapon(Enum):
@@ -69,6 +69,7 @@ class Weapon(Enum):
     use god weapon use
 
     """
+    NO = 0
     WOODEN = 1
     BOMB = 2
     HAMMER = 3
@@ -112,6 +113,8 @@ class Tag(Enum):
 class Time(Enum):
     REMAIN_TIME_LOCK = 600
     TIME_UNLOCK = 300
+
+    DELAY = 2000 #TIME basic attack
 
     HAMMER = 10000
     WIND = 5000
