@@ -75,9 +75,9 @@ def test_pr():
 
 def test_compare():
     print([2,3]==[2,3])
-    print(FaceAction.FACES.value)
-    print(FaceAction.FACES.value[1] == [-1, 0])
-    print(FaceAction.FACES.value.index([-1, 0]))
+    print(FaceAction.FACE_ACTION.value)
+    print(FaceAction.FACE_ACTION.value[1] == [-1, 0])
+    print(FaceAction.FACE_ACTION.value.index([-1, 0]))
     print(None == [1,1])
 
 def test_a():
@@ -109,3 +109,7 @@ def test_b():
     match [6,6]:
         case Attack.SWITCH_WEAPON.value:
             print("match")
+
+def test_list():
+    l = [1,2,3,4,5]
+    print(l)

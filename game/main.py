@@ -4,7 +4,7 @@ from datetime import datetime
 import socketio
 
 from lib.alg.astar import a_star_optimized
-from lib.alg.bfs import bfs_dq
+from lib.alg.bfs import bfs_dq, bfs_dq_out_danger
 from lib.alg.max import max_val, gen_hammer
 from lib.model.dataclass import *
 from lib.model.enum.action import Action, Attack
@@ -106,7 +106,8 @@ def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
     locker.warning_pos_max = pos_warning
     locker.all_bomb_pos = pos_all
     # renew
-    locker.another = {}
+    locker.another = {"trigger_by_point": False, }
+    locker.dedup_act = []
 
 
 def paste_update(data):
@@ -148,6 +149,12 @@ def paste_update(data):
 
     paste_locker(LOCKER, pos_lock_player, lock_danger, pos_warning, pos_all)
     paste_locker(LOCKER_CHILD, pos_lock_child, lock_danger, pos_warning, pos_all)
+
+    if ENABLE_DEDUP:
+        LOCKER.dedup_act = DEDUP["player_max"]
+        LOCKER_CHILD.dedup_act = DEDUP["child_max"]
+        DEDUP["player_max"] = []
+        DEDUP["child_max"] = []
 
     # case vẫn tính đc đường dù bị bomb chặn => dừng ở vị trí bị lock
 
@@ -297,10 +304,6 @@ def set_road_to_point(start, child: bool = False):
         set_bonus_point_road(pos_list, start, 50)
 
 
-DIRECTION_HIST_PLAYER = []
-DIRECTION_HIST_CHILD = []
-UNLOCK = 6
-COUNT_UNLOCK = 0
 
 
 def process_emit_action(act_list, child: bool = False):
@@ -309,7 +312,6 @@ def process_emit_action(act_list, child: bool = False):
     info = get_info_action(act_list)
     print(act_list)
     print(info)
-    sys.exit()
     if info["switch"]:
         emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value, child=child))
 
@@ -321,6 +323,7 @@ def process_emit_action(act_list, child: bool = False):
                 pos = LOCKER_CHILD.another.get("hammer")
             if pos:
                 payload = gen_hammer(pos)
+                print(payload)
                 emit_action(gen_action_data(action=Action.USE_WEAPON.value, payload=payload, child=child))
 
     if not child:
@@ -328,10 +331,11 @@ def process_emit_action(act_list, child: bool = False):
     else:
         direction = handle_info_action(CHECKPOINT_CHILD, info, act_list)
 
+
     print(act_list)
-    # DIRECTION_HIST.append(direction)
+    if ENABLE_DEDUP:
+        dedup_action(act_list, child=child)
     drive_data = gen_drive_data(direction, child=child)
-    # TODO DEDUP ACTION
     emit_drive(drive_data)
 
 
@@ -358,22 +362,33 @@ def handle_info_action(checkpoint: dict, info: dict, act_list):
     return direction
 
 
-def dedup_action(action, action_v2):
+ENABLE_DEDUP = False
+DIRECTION_HIST_PLAYER = []
+DIRECTION_HIST_CHILD = []
+# TODO DEDUP MUL
+UNLOCK = 6
+COUNT_UNLOCK = 0
+DEDUP = {
+    "player_max": [],
+    "child_max": []
+}
+
+
+def dedup_action(act_list, child=False):
+    global DIRECTION_HIST_PLAYER, DIRECTION_HIST_CHILD
     global CHECKPOINT_PLAYER
-    direction = gen_direction(action)
-    DIRECTION_HIST_PLAYER.append(direction)
-    print(DIRECTION_HIST_PLAYER)
-    if len(DIRECTION_HIST_PLAYER) >= 6:
-        if DIRECTION_HIST_PLAYER.count(direction) >= 3:
-            CHECKPOINT_PLAYER["action_per_emit"] = len(action_v2)
-            direction = gen_direction(action_v2)
-            DIRECTION_HIST_PLAYER.pop()
-            DIRECTION_HIST_PLAYER.append(direction)
-        DIRECTION_HIST_PLAYER.pop(0)
-    if len(direction) != CHECKPOINT_PLAYER["action_per_emit"]:  # re verify
-        CHECKPOINT_PLAYER["action_per_emit"] = len(direction)
-    # pr_red("line 400 new direction:" + direction)
-    return direction
+    if not child:
+        DIRECTION_HIST_PLAYER.append(act_list)
+        if len(DIRECTION_HIST_PLAYER) > 7:
+            if DIRECTION_HIST_PLAYER.count(act_list) >= 4:
+                DEDUP["player_max"].append(act_list)
+            DIRECTION_HIST_PLAYER.pop(0)
+    else:
+        DIRECTION_HIST_CHILD.append(act_list)
+        if len(DIRECTION_HIST_CHILD) > 7:
+            if DIRECTION_HIST_CHILD.count(act_list) >= 4:
+                DEDUP["player_max"].append(act_list)
+            DIRECTION_HIST_CHILD.pop(0)
 
 
 list_skip = [
@@ -382,13 +397,13 @@ list_skip = [
 
 CHECKPOINT_PLAYER = {
     "action_per_emit": 1,
-    "timestamp": 0,
-    "timestamp_own": 0,
+    "timestamp_nearest_stop": 0,  # TIME STOP TAG NEAREST
+    "timestamp_own": 0,  # TIME EVENT OWN
     "count_action": 0
 }
 CHECKPOINT_CHILD = {
     "action_per_emit": 1,
-    "timestamp": 0,
+    "timestamp_nearest_stop": 0,
     "timestamp_own": 0,
     "count_action": 0
 }
@@ -406,20 +421,31 @@ def check_hammer_timeout(hammers):
             CHECKPOINT_GOD["player_god"] = hammer.get("createdAt")
         if check_id_child(hammer.get("playerId")):
             CHECKPOINT_GOD["child_god"] = hammer.get("createdAt")
+EXIT = 0
+ENABLE_EXIT = False
+
+
+def sys_exit():
+    global EXIT
+    if ENABLE_EXIT:
+        if EXIT == 1:
+            sys.exit()
+        else:
+            EXIT += 1
 
 
 DRIVE_HIST_PLAYER = []
 DRIVE_HIST_CHILD = []
 
-RANGE_TIME = 400
-RANGE_TIME_OWN = 350
+RANGE_TIME = 550
+RANGE_TIME_OWN = 400
 
 
 def check_valid_event(checkpoint: dict, data):
     return (
             checkpoint["count_action"] == checkpoint["action_per_emit"]
             or data["timestamp"] - checkpoint["timestamp_own"] > RANGE_TIME_OWN
-            or data["timestamp"] - checkpoint["timestamp"] > RANGE_TIME
+            or data["timestamp"] - checkpoint["timestamp_nearest_stop"] > RANGE_TIME
     )
 
 
@@ -430,55 +456,69 @@ def ticktack_handler(data):
     if check_valid_event(CHECKPOINT_PLAYER, data):
         pr_red("process PLAYER")
 
-        if CHECKPOINT_PLAYER["count_action"] == CHECKPOINT_PLAYER["action_per_emit"]:
-            pr_yellow("player trigger by point")
-        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"] > RANGE_TIME_OWN:
-            pr_yellow("player trigger by timeout own")
-        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp"] > RANGE_TIME:
-            pr_yellow("player trigger by timeout")
-
-        CHECKPOINT_PLAYER["timestamp"] = data["timestamp"]
-        CHECKPOINT_PLAYER["action_per_emit"] = 1
-
         if not is_paste_update:
             paste_update(data)
             is_paste_update = True
 
-        if PLAYER.has_full_marry_items and HAVE_CHILD == False and ENEMY_NOT_IN_MAP == False:
-            emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
-            return
+        if CHECKPOINT_PLAYER["count_action"] == CHECKPOINT_PLAYER["action_per_emit"]:
+            pr_yellow("player trigger by point")
+            LOCKER.another["trigger_by_point"] = True
+        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"] > RANGE_TIME_OWN:
+            pr_yellow("player trigger by timeout own")
+        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_nearest_stop"] > RANGE_TIME:
+            pr_yellow("player trigger by timeout")
 
-        if not PLAYER.has_transform:
-            set_road_to_badge()
+        CHECKPOINT_PLAYER["timestamp_nearest_stop"] = data["timestamp"]
+        CHECKPOINT_PLAYER["action_per_emit"] = 1
 
-        if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
-            set_road_to_point(PLAYER.position)
+        print(LOCKER)
 
-        act_list = get_action(1)
+        if PLAYER.position in LOCKER.danger_pos_lock_max:
+            pr_red("outtttt")
+            act_list = bfs_dq_out_danger(PLAYER.position, LOCKER.danger_pos_lock_max, MAP)
+        else:
+            if PLAYER.has_full_marry_items and HAVE_CHILD == False and ENEMY_NOT_IN_MAP == False:
+                emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
+                return
+
+            if not PLAYER.has_transform:
+                set_road_to_badge()
+
+            if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
+                set_road_to_point(PLAYER.position)
+
+            act_list = get_action(1)
+        sys_exit()
         if act_list:
             process_emit_action(act_list)
     # CHILD
-    # HAVE_CHILD = True # enable khi chỉ muon run child
-    if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD and False:
+    #HAVE_CHILD = False  # enable khi chỉ muon run child
+    if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD:
         pr_red("process child")
         print("start", int(datetime.now().timestamp() * 1000))
-
-        if CHECKPOINT_CHILD["count_action"] == CHECKPOINT_CHILD["action_per_emit"]:
-            pr_yellow("CHILD trigger by point")
-        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_own"] > RANGE_TIME_OWN:
-            pr_yellow(f"CHILD trigger by timeout own{data["timestamp"], CHECKPOINT_CHILD["timestamp_own"]}")
-        if data["timestamp"] - CHECKPOINT_CHILD["timestamp"] > RANGE_TIME:
-            pr_yellow("CHILD trigger by timeout")
 
         if not is_paste_update:
             paste_update(data)
 
-        CHECKPOINT_CHILD["timestamp"] = data["timestamp"]
+        if CHECKPOINT_CHILD["count_action"] == CHECKPOINT_CHILD["action_per_emit"]:
+            pr_yellow("CHILD trigger by point")
+            LOCKER_CHILD.another["trigger_by_point"] = True
+        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_own"] > RANGE_TIME_OWN:
+            pr_yellow(f"CHILD trigger by timeout own{data["timestamp"], CHECKPOINT_CHILD["timestamp_own"]}")
+        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_nearest_stop"] > RANGE_TIME:
+            pr_yellow("CHILD trigger by timeout")
+
+        CHECKPOINT_CHILD["timestamp_nearest_stop"] = data["timestamp"]
         CHECKPOINT_CHILD["action_per_emit"] = 1
 
-        if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
-            set_road_to_point(PLAYER_CHILD.position, child=True)
-        act_list = get_action(10)
+        if PLAYER_CHILD.position in LOCKER_CHILD.danger_pos_lock_max:
+            pr_red("CHILD outtttt")
+            act_list = bfs_dq_out_danger(PLAYER_CHILD.position, LOCKER_CHILD.danger_pos_lock_max, MAP)
+        else:
+            if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
+                set_road_to_point(PLAYER_CHILD.position, child=True)
+            act_list = get_action(10)
+
         if act_list:
             process_emit_action(act_list, child=True)
 
@@ -494,7 +534,7 @@ def check_ticktack_event(checkpoint: dict, data):
     checkpoint["timestamp_own"] = data["timestamp"]
 
     if data["tag"] in Tag.TAG_STOP.value:
-        checkpoint["timestamp"] = data["timestamp"]
+        checkpoint["timestamp_nearest_stop"] = data["timestamp"]
         checkpoint["count_action"] += 1
 
 
@@ -529,36 +569,14 @@ def event_handle(data):
     player_id_of_event = data.get("player_id", "no id")
     print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
 
-    if (player_id_of_event in PLAYER_ID
-            or player_id_of_event[0:10] in PLAYER_ID
-    ):
-        # print("event by player", data["timestamp"], CHECKPOINT_PLAYER["timestamp_own"], data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"],
-        #       RANGE_TIME_OWN, "----------", timestamp_PLAYER, data["timestamp"] - timestamp_PLAYER, RANGE_TIME)
-
-        if "child" in player_id_of_event and HAVE_CHILD:
-            check_ticktack_event(CHECKPOINT_CHILD, data)
-            print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
-
-        elif "child" not in player_id_of_event:
-            check_ticktack_event(CHECKPOINT_PLAYER, data)
-            print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
-    # if not RUNNING:
-    #     RUNNING = True
-    #     ticktack_handler(data)
-    #     RUNNING = False
+    if player_id_of_event in PLAYER_ID:
+        check_ticktack_event(CHECKPOINT_PLAYER, data)
+        print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
+    elif check_id_child(player_id_of_event):
+        check_ticktack_event(CHECKPOINT_CHILD, data)
+        print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
 
     ticktack_handler(data)
-    # if lock.acquire(blocking=False):
-    #     try:
-    #         # Xử lý sự kiện
-    #         print(f"Start handling event {data['id']}")
-    #         ticktack_handler(data)
-    #         # print(f"Finished handling event {data['id']}")
-    #     finally:
-    #         lock.release()
-    # return
-    # print(f"Skipping event {data['id']} because handler is busy")
-    # todo: fix sao cho cac event ko overlap
 
 
 @sio.on(event=DRIVE_EVENT)

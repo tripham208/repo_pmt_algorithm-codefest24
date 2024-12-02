@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
-from lib.model.enum.gameobjects import MarryItem, Objects, StatusPoint
+from lib.model.enum.action import Face
+from lib.model.enum.gameobjects import MarryItem, Objects, StatusPoint, Weapon
 from lib.model.enum.range import AroundRange, WeaponRange
 from lib.utils.map import create_map_zero
 
@@ -63,10 +64,16 @@ class Map:
 
         return pos_danger
 
+    @property
+    def get_pos_god_weapon(self) -> list:
+        pos_danger = self.get_pos_winds + self.get_pos_hammers
+        return pos_danger
+
 
 @dataclass
 class Player:
     position: [int, int]
+    face:int = Face.UNKNOWN.value
     owner_weapon = [1]
     cur_weapon: int = 1
     time_to_use_special_weapons: int = 0
@@ -88,6 +95,13 @@ class Player:
     is_stun: bool = False
     can_use_god_attack: bool = False
     can_use_item: bool = False
+
+    def update_face(self, act):
+        match act:
+            case [-1, 0]: self.face = Face.UP.value
+            case [0, 1]: self.face = Face.RIGHT.value
+            case [1, 0]: self.face = Face.DOWN.value
+            case [0, -1]: self.face = Face.LEFT.value
 
     @property
     def owned_marry_items(self) -> int:
@@ -120,8 +134,12 @@ class Locker:
     # use for checkpoint
     expect_pos: list = None
     expect_face: int = 0
+    # dedup max
+    dedup_act: list =  field(default_factory=lambda: [])
     # use on-demand
-    another: dict = None
+    another: dict = field(default_factory=lambda: {
+        "trigger_by_point": False,
+    })
 
 
 @dataclass
@@ -218,7 +236,7 @@ class ValResponse:
     pos_list: list
     act_list: list
     value: int = StatusPoint.MIN.value
-    weap:int = 0
+    weapon: int = Weapon.NO.value
 
     expect_pos: list = None
     expect_face: int = 0

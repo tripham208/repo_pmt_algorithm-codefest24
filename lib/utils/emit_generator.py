@@ -24,7 +24,7 @@ def gen_direction(list_action: list[list]):
             case [1, 0]:
                 direction += "4"
             case [0, 0]:
-                direction += "x"
+                break
             case [2, 2]:
                 direction += "b" #wooden
                 break

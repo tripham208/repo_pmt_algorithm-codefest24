@@ -4,10 +4,10 @@ from enum import Enum
 # [row,col]
 
 class Face(Enum):
-    UP = 1
-    DOWN = 2
-    LEFT = 3
-    RIGHT = 4
+    UP = 3
+    DOWN = 4
+    LEFT = 1
+    RIGHT = 2
     UNKNOWN = 0
 
 
@@ -20,8 +20,8 @@ class FaceAction(Enum):
     RIGHT_V2 = [0, 10]
     DOWN_V2 = [10, 0]
     LEFT_V2 = [0, -10]
-    FACES = [[], UP, DOWN, LEFT, RIGHT]
-    FACES_V2 = [[], UP_V2, DOWN_V2, LEFT_V2, RIGHT_V2]
+    FACE_ACTION = [[], LEFT, RIGHT, UP, DOWN] # sync with face => GET BY INDEX
+    FACE_ACTION_V2 = [[], LEFT_V2, RIGHT_V2, UP_V2, DOWN_V2]
 
 
 class Action(Enum):

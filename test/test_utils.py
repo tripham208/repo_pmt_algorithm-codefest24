@@ -127,3 +127,21 @@ def test_is_valid_hammer():
     print(is_valid_hammer([19, 9], [19, 9]))  # v
     print(is_valid_hammer([19, 9], [14, 13]))  # v
     print(is_valid_hammer([19, 9], [14, 9]))  # v
+
+
+P = "354a46a1-96de9887-14"
+def check_id_child(pid) -> bool:
+    if (
+            (pid in P or pid[0:10] in P)
+            and "child" in pid
+    ):
+        return True
+    return False
+def test_check_id_child():
+
+    child = "354a46a1-96de_child"
+    player =  "354a46a1-96de"
+
+    print(player  in P)
+    print(check_id_child(child))
+    print(check_id_child("354a46ad1-96de_child"))

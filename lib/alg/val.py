@@ -15,7 +15,7 @@ def calculate_bombs(base_map: Map, player: Player):
         power = bomb.get("power", 0)
 
         bomb_range = BombRange[f'LV{power}'].value
-        pos_danger += [[bomb["row"], bomb["col"]]] # todo neu impl tu sat
+        pos_danger += [[bomb["row"], bomb["col"]]]  # todo neu impl tu sat
         is_warning = bomb.get("remainTime", 0) > 1000
         will_destroy = bomb.get("remainTime", 0) < 500
         new = bomb.get("remainTime", 0) == 2000
@@ -41,6 +41,14 @@ def calculate_bombs(base_map: Map, player: Player):
             point += 1000 - (dis * 100)
 
     return point, pos_danger, pos_warning
+
+
+def check_spoil_near(base_map: Map, player: Player) -> int:
+    spoil_near = 0
+    for spoil in base_map.get_pos_spoils:
+        if euclid_distance(player.position, spoil) < 3:
+            spoil_near += 1
+    return spoil_near
 
 
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
@@ -98,16 +106,18 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
                 bonus += get_point_match_step_spoil(idx)
                 bonus += 200
 
+    bonus += check_spoil_near(base_map, player)
+
     for i in act_list:
-        if i in FaceAction.FACES_V2.value:
-            bonus -= 100
+        if i in FaceAction.FACE_ACTION_V2.value:
+            bonus -= 200
     value += bonus
     value += bonus_badge
     value += deny_bomb
 
     god_pos = base_map.get_pos_hammers
     god_pos += base_map.get_pos_winds
-    print(god_pos)
+    # print(god_pos)
     if player.position in god_pos:
         value += StatusPoint.DANGER.value
     if player_another.position in god_pos:
@@ -123,6 +133,6 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         if enemy_child.position in god_pos:
             value -= StatusPoint.BOMB_ENEMY.value
 
-    #print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} badge {bonus_badge} deny_bomb {deny_bomb} => {value}")
+    # print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} badge {bonus_badge} deny_bomb {deny_bomb} => {value}")
 
     return value

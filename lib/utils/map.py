@@ -86,7 +86,7 @@ def get_info_action(act_list) -> dict:
     }
     for idx, act in enumerate(act_list, start=1):
         match idx, act:
-            case _, act if act in FaceAction.FACES_V2.value:
+            case _, act if act in FaceAction.FACE_ACTION_V2.value:
                 output["reface"] = True
                 output["drop"] += 1
                 break
