@@ -119,6 +119,9 @@ class Time(Enum):
     HAMMER = 10000
     WIND = 5000
 
+    WOODEN = 2000
+
+
 
 class Cell(Enum):
     """

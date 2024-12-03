@@ -106,7 +106,7 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
                 bonus += get_point_match_step_spoil(idx)
                 bonus += 200
 
-    bonus += check_spoil_near(base_map, player)
+    bonus += check_spoil_near(base_map, player) * 100
 
     for i in act_list:
         if i in FaceAction.FACE_ACTION_V2.value:
@@ -133,6 +133,6 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         if enemy_child.position in god_pos:
             value -= StatusPoint.BOMB_ENEMY.value
 
-    # print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} badge {bonus_badge} deny_bomb {deny_bomb} => {value}")
+    #print(f"75 val:eval map {evaluated_map_point} base map: {base_map.up_point} bomb: {point} bonus: {bonus} badge {bonus_badge} deny_bomb {deny_bomb} => {value}")
 
     return value

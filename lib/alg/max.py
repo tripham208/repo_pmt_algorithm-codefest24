@@ -6,7 +6,7 @@ from lib.model.dataclass import *
 from lib.model.enum.action import get_action_zone, Face, FaceAction, Attack
 from lib.model.enum.gameobjects import StatusPoint
 from lib.model.enum.range import WeaponRange, BombRange
-from lib.utils.map import is_zone, get_face, get_face_act_v2, check_have_attack
+from lib.utils.map import is_zone, get_face_act_v2, check_have_attack
 from lib.utils.printer import pr_red, pr_yellow, pr_green
 
 H = 4
@@ -88,7 +88,7 @@ def get_max_val(
         act_list,
 ) -> ValResponse:
     response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
-    print(f"90 get_max_val level:{level} current action:{act_list}")
+    # print(f"90 get_max_val level:{level} current action:{act_list}")
 
     for action in actions:
         if action == [1, 1]:
@@ -107,7 +107,7 @@ def get_max_val(
                 pos_list=pos_list,
                 act_list=act_list,
             )
-            print(f"105 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {tmp_response.act_list, tmp_response.pos_list}")
+            # print(f"105 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {tmp_response.act_list, tmp_response.pos_list}")
             if response.value < tmp_response.value:
                 response = tmp_response
 
@@ -126,7 +126,7 @@ def get_max_val(
                 pos_list=pos_list,
                 act_list=act_list,
             )
-            pr_yellow(f"125 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}")
+            # pr_yellow(f"125 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}")
             if response.value < point:
                 # #pr_green(response)
                 response = ValResponse(pos_list=list(pos_list), act_list=list(new_act_list), value=point)
@@ -146,10 +146,10 @@ def get_max_val(
                 act_list=act_list,
                 current_action=action,
             )
-            print(f"145 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {response.value} {tmp_response.act_list} {tmp_response.pos_list}")
+            # print(f"145 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {response.value} {tmp_response.act_list} {tmp_response.pos_list}")
             if response.value < tmp_response.value:
                 response = tmp_response
-        print(f"150 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
+        # print(f"150 return max_val level:{level}\033[91m value: {response.value}\033[00m", response.act_list)
     return response
 
 
@@ -176,8 +176,13 @@ def deepcopy_env(base_map, pos_list, act_list):
     return deepcopy(base_map), deepcopy(pos_list), deepcopy(act_list)
 
 
-def is_valid_hammer(current, target):
-    if (abs(current[0] - target[0]) <= 7) and (abs(current[1] - target[1]) <= 7): return True
+def is_valid_hammer(player, enemy):
+    current = player.position
+    target = enemy.position
+    print(current, target)
+    if (2 < abs(current[0] - target[0]) <= 7) and (2 < abs(current[1] - target[1]) <= 7): return True
+    if (player.lives > enemy.lives) and (abs(current[0] - target[0]) <= 2) and (2 <= abs(current[1] - target[1]) <= 2):
+        return True
     return False
 
 
@@ -200,16 +205,18 @@ def attack_action(
     def wooden_attack():
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map, cur_weapon
         nonlocal player, enemy, player_another, enemy_child
-        pr_yellow("wooden_attack")
+        #pr_yellow("wooden_attack")
         face = Face.UNKNOWN.value
         if len(act_list) >= 1:
             face = player.face
         else:
-            print("210", locker.another.get("trigger_by_point", False))
-            if locker.expect_pos == player.position and locker.another.get("trigger_by_point", False):
+            #print("210", locker.another.get("trigger_by_point", False))
+
+            if locker.expect_pos == player.position and (
+                    locker.another.get("trigger_by_point", False) or player.remember_face):
                 face = locker.expect_face
         if face == Face.UNKNOWN.value:
-            print(f"215 level:{level} attack UNKNOW return")
+            #print(f"215 level:{level} attack UNKNOW return")
             return
         if player.position in locker.all_bomb_pos:
             return
@@ -223,7 +230,7 @@ def attack_action(
                 new_base_map.set_val_map(pos_w_atk, 0)
                 if (base_map.get_obj_map(pos_w_atk) == 3
                         and (
-                                player.has_transform
+                                (player.has_transform or player.is_child)
                                 or (evaluated_map.get_val_road(pos_w_atk) > 75 and not player.has_transform)
                         )
                 ):
@@ -264,7 +271,7 @@ def attack_action(
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
 
-        # pr_yellow("bomb_attack")
+        #pr_yellow(f"bomb_attack {level}")
         new_player = deepcopy(player)
         new_player.has_bomb = False
         bomb = gen_bomb(new_player)
@@ -298,17 +305,19 @@ def attack_action(
         if response.value < tmp_response.value:
             response = tmp_response
             response.weapon = Weapon.BOMB.value
-        # print(f"295 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+        print(f"295 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
 
     def god_attack():
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
         enemy_have_child = False if enemy_child.position == [0, 0] else True
-        pr_yellow("god_attack")
+        pr_yellow(f"god_attack {level}")
 
         # todo máu nhiều hơn phang luôn
-        if player.transform_type == Objects.MOUNTAIN_GOD.value:
-            if is_valid_hammer(player.position, enemy.position):  # 9
+        if max(player.transform_type, player_another.transform_type) == Objects.MOUNTAIN_GOD.value:
+            print(f"god_attack {level} check enemy")
+            if is_valid_hammer(player, enemy) and not enemy.is_stun:  # 9
+                print("valid ene")
                 new_player = deepcopy(player)
                 new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
 
@@ -329,13 +338,13 @@ def attack_action(
                     act_list=new_act_list,
                 )
 
-                # #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
                 if response.value < tmp_response.value:
                     response = tmp_response
                     response.weapon = Weapon.HAMMER.value
                     response.another["hammer"] = enemy.position
-            if enemy_have_child and is_valid_hammer(player.position, enemy_child.position):
-
+            if enemy_have_child and is_valid_hammer(player, enemy_child) and not enemy_child.is_stun:
+                print("valid child")
                 new_player = deepcopy(player)
                 new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
 
@@ -356,25 +365,24 @@ def attack_action(
                     act_list=new_act_list,
                 )
 
-                # #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
                 if response.value < tmp_response.value:
                     response = tmp_response
                     response.weapon = Weapon.HAMMER.value
-                    response.another["hammer"] = enemy.position
+                    response.another["hammer"] = enemy_child.position
         else:
             pass
-
-    if (not is_basic_attacked(act_list) and player.has_transform
+    if (not is_basic_attacked(act_list) and (player.has_transform or player.is_child)
         and max(player.time_to_use_special_weapons,
                 player_another.time_to_use_special_weapons) > 0 and player.can_use_god_attack) and level <= 2:
         god_attack()
 
     if not is_basic_attacked(act_list) and 2 in player.owner_weapon and player.has_bomb and level <= H_NO_ATTACK_BOMB:
-        if not response.weapon == Weapon.HAMMER.value:
+        if not response.weapon == Weapon.HAMMER.value or response.value < 0:
             bomb_attack()
 
     if not is_basic_attacked(act_list) and level <= H_NO_ATTACK_BOMB:
-        if not response.weapon == Weapon.HAMMER.value and not response.weapon == Weapon.BOMB.value:
+        if not response.weapon == Weapon.HAMMER.value and not response.weapon == Weapon.BOMB.value or response.value < 0:
             wooden_attack()
 
     return response
@@ -418,7 +426,7 @@ def move_action(
     if not can_go_new_pos(new_pos_player, base_map, locker):
         # print(f"405 end:{current_action} level:{level}", act_list, pos_list)
         return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
-    if level >=3:
+    if level >= 3:
         if Attack.BOMB.value not in act_list and new_pos_player in pos_list:
             return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
         if Attack.HAMMER.value not in act_list and new_pos_player in pos_list:
@@ -434,7 +442,7 @@ def move_action(
 
     if level < H and not (
             Attack.WOODEN.value in act_list and len(act_list) >= 2 and act_list[-2] != Attack.WOODEN.value):
-        # print(f"315 move:{current_action} level:{level}", new_act_list, new_pos_list)
+        #print(f"315 move:{current_action} level:{level}", new_act_list, new_pos_list)
         return get_max_val(
             actions=actions,
             base_map=base_map,

@@ -93,8 +93,10 @@ class Player:
     has_bomb: bool = False
     has_full_marry_items: bool = False
     is_stun: bool = False
+    is_child: bool = False
     can_use_god_attack: bool = False
     can_use_item: bool = False
+    remember_face: bool = False
 
     def update_face(self, act):
         match act:
@@ -122,6 +124,7 @@ class Player:
 
 @dataclass
 class Locker:
+    # can use for save status next trigger
     danger_pos_lock_max: list
     danger_pos_lock_bfs: list
     pos_lock: list  # list pos all player + boms
