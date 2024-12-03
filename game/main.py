@@ -100,10 +100,10 @@ def paste_player_data(players):
             ENEMY.transform_type = player.get("transformType", 0)
             ENEMY.is_stun = player["isStun"]
             ENEMY_NOT_IN_MAP = False
-    print(PLAYER)
-    print(PLAYER_CHILD)
-    print(ENEMY)
-    print(ENEMY_CHILD)
+    # print(PLAYER)
+    # print(PLAYER_CHILD)
+    # print(ENEMY)
+    # print(ENEMY_CHILD)
 
 
 def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
@@ -146,7 +146,7 @@ def paste_update(data):
             PLAYER.can_use_god_attack = True
         if data["timestamp"] - CHECKPOINT_WEAPON["child_god"] > Time.HAMMER.value:
             PLAYER_CHILD.can_use_god_attack = True
-    print("146",data["timestamp"] , CHECKPOINT_PLAYER["timestamp_wooden"], data["timestamp"] - CHECKPOINT_PLAYER["timestamp_wooden"])
+    #print("146",data["timestamp"] , CHECKPOINT_PLAYER["timestamp_wooden"], data["timestamp"] - CHECKPOINT_PLAYER["timestamp_wooden"])
     if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_wooden"] < Time.WOODEN.value:
         PLAYER.remember_face = True
     else:
@@ -326,8 +326,8 @@ def process_emit_action(act_list, child: bool = False):
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
 
     info = get_info_action(act_list)
-    print(act_list)
-    print(info)
+    # print(act_list)
+    # print(info)
     if info["switch"]:
         emit_action(gen_action_data(action=Action.SWITCH_WEAPON.value, child=child))
 
@@ -488,7 +488,7 @@ def ticktack_handler(data):
     global HAVE_CHILD
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if check_valid_event(CHECKPOINT_PLAYER, data) and False:
+    if check_valid_event(CHECKPOINT_PLAYER, data):
         pr_red("process PLAYER")
 
         if not is_paste_update:
@@ -506,7 +506,7 @@ def ticktack_handler(data):
         CHECKPOINT_PLAYER["timestamp_nearest_stop"] = data["timestamp"]
         CHECKPOINT_PLAYER["action_per_emit"] = 1
 
-        print(LOCKER)
+        #print(LOCKER)
 
         if PLAYER.position in LOCKER.danger_pos_lock_max:
             pr_red("outtttt")
@@ -530,7 +530,7 @@ def ticktack_handler(data):
         if act_list and not STOP_THREADS_PLAYER:
             process_emit_action(act_list)
     # CHILD
-    HAVE_CHILD = True  # enable khi chỉ muon run child
+    #HAVE_CHILD = True  # enable khi chỉ muon run child
     if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD:
         pr_red("process child")
 
@@ -637,17 +637,17 @@ def event_handle(data):
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
 
     player_id_of_event = data.get("player_id", "no id")
-    print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
+    #print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
 
     # if is_have_god(data):
     #     god_handler(data)
 
     if player_id_of_event in PLAYER_ID:
         check_ticktack_event(CHECKPOINT_PLAYER, data)
-        print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
+        #print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
     elif check_id_child(player_id_of_event):
         check_ticktack_event(CHECKPOINT_CHILD, data)
-        print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
+        #print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
 
     ticktack_handler(data)
 

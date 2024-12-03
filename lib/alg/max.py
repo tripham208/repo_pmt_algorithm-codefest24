@@ -179,7 +179,7 @@ def deepcopy_env(base_map, pos_list, act_list):
 def is_valid_hammer(player, enemy):
     current = player.position
     target = enemy.position
-    print(current, target)
+    #print(current, target)
     if (2 < abs(current[0] - target[0]) <= 7) and (2 < abs(current[1] - target[1]) <= 7): return True
     if (player.lives > enemy.lives) and (abs(current[0] - target[0]) <= 2) and (2 <= abs(current[1] - target[1]) <= 2):
         return True
@@ -305,7 +305,7 @@ def attack_action(
         if response.value < tmp_response.value:
             response = tmp_response
             response.weapon = Weapon.BOMB.value
-        print(f"295 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+        #print(f"295 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
 
     def god_attack():
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
@@ -323,7 +323,7 @@ def attack_action(
 
                 new_act_list.append(Attack.HAMMER.value)
                 new_base_map.hammers.append(gen_hammer(enemy.position))
-                print(new_base_map.hammers)
+                #print(new_base_map.hammers)
                 tmp_response = get_max_val(
                     actions=actions,
                     base_map=new_base_map,
@@ -338,13 +338,13 @@ def attack_action(
                     act_list=new_act_list,
                 )
 
-                print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
+                #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
                 if response.value < tmp_response.value:
                     response = tmp_response
                     response.weapon = Weapon.HAMMER.value
                     response.another["hammer"] = enemy.position
             if enemy_have_child and is_valid_hammer(player, enemy_child) and not enemy_child.is_stun:
-                print("valid child")
+                #print("valid child")
                 new_player = deepcopy(player)
                 new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
 
@@ -472,5 +472,5 @@ def move_action(
             act_list=new_act_list,
         )
 
-        print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
+        #print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
         return ValResponse(value=point, act_list=new_act_list, pos_list=new_pos_list)

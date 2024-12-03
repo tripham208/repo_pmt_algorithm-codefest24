@@ -1,8 +1,12 @@
 # MATCH CONTEXT
-URL = "http://192.168.137.230:157/"
-GAME_ID = "47f3cf45-b7bb-4179-8156-287f6ad62cb8"
-#PLAYER_ID = "player2-xxx"
-PLAYER_ID = "player1-xxx"
+URL = "http://192.168.0.112:3000/"# 192.168.0.146
+GAME_ID = "f83323c8-96c7-441e-b3ba-cbad3d4d4fb2"
+PLAYER_ID = "a10409cf-198b-4b90-a9e6-335b4f5db749"
+#PLAYER_ID = "player1-xxx"
+
+
+# GameID: f83323c8-96c7-441e-b3ba-cbad3d4d4fb2
+# (GDC) Thiếu Nữ a10409cf-198b-4b90-a9e6-335b4f5db749
 
 # EVENT
 JOIN_GAME_EVENT = "join game"
