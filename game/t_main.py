@@ -8,7 +8,7 @@ import socketio
 from game.match import DRIVE_EVENT, REGISTER_EVENT, ACTION_EVENT, JOIN_GAME_EVENT, URL, \
     TICKTACK_EVENT
 from lib.model.enum.action import Action
-from lib.utils.emit_generator import gen_drive_data, gen_action_data
+from lib.utils.generator import gen_drive_data, gen_action_data
 
 sio = socketio.Client()
 

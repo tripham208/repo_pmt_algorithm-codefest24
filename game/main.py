@@ -1,5 +1,6 @@
 import sys
-from datetime import datetime
+import threading
+import time
 
 import socketio
 
@@ -10,8 +11,8 @@ from lib.model.dataclass import *
 from lib.model.enum.action import Action, Attack
 from lib.model.enum.gameobjects import Tag, Time
 from lib.model.enum.range import BombRange
-from lib.utils.emit_generator import gen_direction, gen_drive_data, gen_action_data
-from lib.utils.map import euclid_distance, find_index, get_info_action
+from lib.utils.generator import gen_direction, gen_drive_data, gen_action_data
+from lib.utils.map import euclid_distance, find_index, prepare_action
 from lib.utils.printer import pr_green, pr_yellow, pr_red
 from match import *
 
@@ -146,16 +147,16 @@ def paste_update(data):
             PLAYER.can_use_god_attack = True
         if data["timestamp"] - CHECKPOINT_WEAPON["child_god"] > Time.HAMMER.value:
             PLAYER_CHILD.can_use_god_attack = True
-    #print("146",data["timestamp"] , CHECKPOINT_PLAYER["timestamp_wooden"], data["timestamp"] - CHECKPOINT_PLAYER["timestamp_wooden"])
+    # print("146",data["timestamp"] , CHECKPOINT_PLAYER["timestamp_wooden"], data["timestamp"] - CHECKPOINT_PLAYER["timestamp_wooden"])
     if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_wooden"] < Time.WOODEN.value:
         PLAYER.remember_face = True
     else:
         PLAYER.remember_face = False
     if HAVE_CHILD:
         if data["timestamp"] - CHECKPOINT_CHILD["timestamp_wooden"] < Time.WOODEN.value:
-            PLAYER.remember_face = True
+            PLAYER_CHILD.remember_face = True
         else:
-            PLAYER.remember_face = False
+            PLAYER_CHILD.remember_face = False
 
     EVALUATED_MAP.reset_point_map(cols=MAP.cols, rows=MAP.rows)
     EVALUATED_MAP.set_point_map(base_map=MAP, status=PLAYER)
@@ -193,7 +194,7 @@ def get_lock_bombs(base_map: Map):
         is_safe = bomb.get("remainTime", 0) > 1300
         is_warning = 1000 < bomb.get("remainTime", 0) < 1300
 
-        if bomb.get("playerId") in PLAYER_ID and bomb.get("remainTime", 0) >= 0:# =0 check xem bomb noor chuwa
+        if bomb.get("playerId") in PLAYER_ID and bomb.get("remainTime", 0) >= 0:  # =0 check xem bomb noor chuwa
             PLAYER.has_bomb = False
         elif check_id_child(bomb.get("playerId")) and bomb.get("remainTime", 0) >= 0:
             PLAYER_CHILD.has_bomb = False
@@ -305,7 +306,8 @@ def get_action(case, param: dict = None) -> list:
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
             return x
         case 20:
-            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP, eval_map=EVALUATED_MAP)
+            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP, eval_map=EVALUATED_MAP,
+                          is_child=True)
         case 40:
             return a_star_optimized(
                 start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP,
@@ -322,10 +324,10 @@ def set_road_to_point(start, child: bool = False):
         set_bonus_point_road(pos_list, start, 50)
 
 
-def process_emit_action(act_list, child: bool = False):
+def process_emit_action(origin_act_list, child: bool = False):
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
 
-    info = get_info_action(act_list)
+    info, act_list = prepare_action(origin_act_list)
     # print(act_list)
     # print(info)
     if info["switch"]:
@@ -340,7 +342,7 @@ def process_emit_action(act_list, child: bool = False):
             if pos:
                 payload = gen_hammer(pos)
                 print(payload)
-                #sys_exit()
+                # sys_exit()
                 emit_action(gen_action_data(action=Action.USE_WEAPON.value, payload=payload, child=child))
 
     if not child:
@@ -416,14 +418,14 @@ CHECKPOINT_PLAYER = {
     "timestamp_nearest_stop": 0,  # TIME STOP TAG NEAREST
     "timestamp_own": 0,  # TIME EVENT OWN
     "count_action": 0,
-    "timestamp_wooden": 0 # để đây vì lười refactor
+    "timestamp_wooden": 0  # để đây vì lười refactor; remember face when wait wooden timeout
 }
 CHECKPOINT_CHILD = {
     "action_per_emit": 1,
     "timestamp_nearest_stop": 0,
     "timestamp_own": 0,
     "count_action": 0,
-    "timestamp_wooden": 0 # để đây vì lười refactor
+    "timestamp_wooden": 0  # để đây vì lười refactor
 }
 
 CHECKPOINT_WEAPON = {
@@ -477,10 +479,8 @@ def set_road_to_badge2():
     MAP.badges = badges
     for pos in badges:
         nearest_badge = pos
-    LOCKER.a_star_lock = Objects.A_STAR_PHASE1_LOCK.value  # lock phase 1
+    LOCKER.a_star_lock = Objects.A_STAR_PHASE2_LOCK.value  # lock phase 1
     act_list, pos_list = get_action(case=4, param={"target": nearest_badge})
-    # pr_red(f"astar {pos_list}")
-    # print(act_list)
     set_bonus_point_road(pos_list, PLAYER.position, 100)
 
 
@@ -506,7 +506,7 @@ def ticktack_handler(data):
         CHECKPOINT_PLAYER["timestamp_nearest_stop"] = data["timestamp"]
         CHECKPOINT_PLAYER["action_per_emit"] = 1
 
-        #print(LOCKER)
+        # print(LOCKER)
 
         if PLAYER.position in LOCKER.danger_pos_lock_max:
             pr_red("outtttt")
@@ -516,7 +516,7 @@ def ticktack_handler(data):
                 emit_action(gen_action_data(action=Action.MARRY_WIFE.value))
                 return
 
-            if not PLAYER.has_transform: # todo :check map 2 cái có gần nhau ko thì fi đến chỗ cái kia
+            if not PLAYER.has_transform:  # todo :check map 2 cái có gần nhau ko thì fi đến chỗ cái kia
                 set_road_to_badge()
 
             if PLAYER.has_transform and len(MAP.badges) > 0:
@@ -526,11 +526,11 @@ def ticktack_handler(data):
                 set_road_to_point(PLAYER.position)
 
             act_list = get_action(1)
-        #sys_exit()
+        # sys_exit()
         if act_list and not STOP_THREADS_PLAYER:
             process_emit_action(act_list)
     # CHILD
-    #HAVE_CHILD = True  # enable khi chỉ muon run child
+    # HAVE_CHILD = True  # enable khi chỉ muon run child
     if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD:
         pr_red("process child")
 
@@ -555,13 +555,9 @@ def ticktack_handler(data):
             if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
                 set_road_to_point(PLAYER_CHILD.position, child=True)
             act_list = get_action(10)
-        #sys_exit()
+        # sys_exit()
         if act_list and not STOP_THREADS_CHILD:
             process_emit_action(act_list, child=True)
-
-
-
-
 
 
 # SOCKET HANDLER
@@ -595,13 +591,12 @@ def event_handle(data):
 
 
 RUNNING = False
-import threading
-import time
 
 lock = threading.Lock()
 
+
 def check_in_god(player_pos, base_map: Map, child=False):
-    global STOP_THREADS_CHILD,STOP_THREADS_PLAYER
+    global STOP_THREADS_CHILD, STOP_THREADS_PLAYER
     god_pos = base_map.get_pos_god_weapon
     if player_pos in god_pos:
         act_list = bfs_dq_out_danger(PLAYER_CHILD.position, god_pos, MAP)
@@ -616,11 +611,13 @@ def check_in_god(player_pos, base_map: Map, child=False):
             else:
                 STOP_THREADS_PLAYER = False
 
+
 def is_have_god(data):
-    if len(data["map_info"]["weaponHammers"]) > 0 or len(data["map_info"]["weaponWinds"]) > 0 :
+    if len(data["map_info"]["weaponHammers"]) > 0 or len(data["map_info"]["weaponWinds"]) > 0:
         return True
     else:
         return False
+
 
 def god_handler(data):
     paste_update(data)
@@ -628,8 +625,10 @@ def god_handler(data):
     check_in_god(PLAYER.position, MAP, child=False)
     check_in_god(PLAYER_CHILD.position, MAP, child=True)
 
+
 STOP_THREADS_PLAYER = False
 STOP_THREADS_CHILD = False
+
 
 @sio.on(event=TICKTACK_EVENT)
 def event_handle(data):
@@ -637,17 +636,17 @@ def event_handle(data):
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
 
     player_id_of_event = data.get("player_id", "no id")
-    #print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
+    # print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
 
     # if is_have_god(data):
     #     god_handler(data)
 
     if player_id_of_event in PLAYER_ID:
         check_ticktack_event(CHECKPOINT_PLAYER, data)
-        #print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
+        # print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
     elif check_id_child(player_id_of_event):
         check_ticktack_event(CHECKPOINT_CHILD, data)
-        #print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
+        # print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
 
     ticktack_handler(data)
 

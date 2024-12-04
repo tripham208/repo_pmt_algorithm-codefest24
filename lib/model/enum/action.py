@@ -59,14 +59,23 @@ class Attack(Enum):
 
 
 
-def get_move_out_zone(region):
+def get_move_out_zone(region, is_child = False):
     zone_map = {
         1: NextMoveZone.Z1.value,
         2: NextMoveZone.Z2.value,
         3: NextMoveZone.Z3.value,
         4: NextMoveZone.Z4.value
     }
-    return zone_map.get(region, NextMoveZone.Z4.value)
+    zone_map_child = {
+        4: NextMoveZone.Z1.value,
+        3: NextMoveZone.Z2.value,
+        2: NextMoveZone.Z3.value,
+        1: NextMoveZone.Z4.value
+    }
+    if is_child:
+        return zone_map_child.get(region, NextMoveZone.Z1.value)
+    else:
+        return zone_map.get(region, NextMoveZone.Z4.value)
 
 
 def get_action_zone(region):

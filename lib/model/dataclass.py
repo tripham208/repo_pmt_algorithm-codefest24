@@ -13,12 +13,12 @@ class Map:
     spoils: list
     cols: int = 0
     rows: int = 0
-    pos_enemy: list = None
-    pos_enemy_child: list = None
+    pos_enemy: list = field(default_factory=lambda: [0, 0])
+    pos_enemy_child: list = field(default_factory=lambda: [0, 0])
     up_point: int = 0
-    badges: list = None
-    hammers: list = None
-    winds: list = None
+    badges: list = field(default_factory=lambda: [])
+    hammers: list = field(default_factory=lambda: [])
+    winds: list = field(default_factory=lambda: [])
 
     def get_obj_map(self, pos):
         return self.map[pos[0]][pos[1]]
@@ -73,7 +73,7 @@ class Map:
 @dataclass
 class Player:
     position: [int, int]
-    face:int = Face.UNKNOWN.value
+    face: int = Face.UNKNOWN.value
     owner_weapon = [1]
     cur_weapon: int = 1
     time_to_use_special_weapons: int = 0
@@ -100,10 +100,14 @@ class Player:
 
     def update_face(self, act):
         match act:
-            case [-1, 0]: self.face = Face.UP.value
-            case [0, 1]: self.face = Face.RIGHT.value
-            case [1, 0]: self.face = Face.DOWN.value
-            case [0, -1]: self.face = Face.LEFT.value
+            case [-1, 0]:
+                self.face = Face.UP.value
+            case [0, 1]:
+                self.face = Face.RIGHT.value
+            case [1, 0]:
+                self.face = Face.DOWN.value
+            case [0, -1]:
+                self.face = Face.LEFT.value
 
     @property
     def owned_marry_items(self) -> int:
@@ -130,15 +134,15 @@ class Locker:
     pos_lock: list  # list pos all player + boms
     a_star_lock: list
 
-    warning_pos_bfs: list = None
-    warning_pos_max: list = None
+    warning_pos_bfs: list = field(default_factory=lambda: [])
+    warning_pos_max: list = field(default_factory=lambda: [])
 
-    all_bomb_pos: list = None
+    all_bomb_pos: list = field(default_factory=lambda: [])
     # use for checkpoint
-    expect_pos: list = None
+    expect_pos: list = field(default_factory=lambda: [0, 0])
     expect_face: int = 0
     # dedup max
-    dedup_act: list =  field(default_factory=lambda: [])
+    dedup_act: list = field(default_factory=lambda: [])
     # use on-demand
     another: dict = field(default_factory=lambda: {
         "trigger_by_point": False,
@@ -241,7 +245,7 @@ class ValResponse:
     value: int = StatusPoint.MIN.value
     weapon: int = Weapon.NO.value
 
-    expect_pos: list = None
+    expect_pos: list = field(default_factory=lambda: [0, 0])
     expect_face: int = 0
     # use on-demand
     another: dict = field(default_factory=lambda: {})

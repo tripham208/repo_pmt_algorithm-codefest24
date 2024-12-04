@@ -58,10 +58,10 @@ def next_pos_bfs(actions: list, lock_duplicate: set, queue: list[list], locker: 
                         locker=locker, base_map=base_map, eval_map=eval_map)
 
 
-def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap):
+def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap, is_child : bool=False) -> list[int]:
     lock_duplicate = {tuple(start)}
 
-    acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]))
+    acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]),is_child=is_child)
     start_status = [start, [], []]
     queue = [start_status]  # current pos , action to pos , pos to pos
     queue = deque(queue)

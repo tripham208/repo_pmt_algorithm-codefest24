@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 
 from lib.model.enum.action import Face, FaceAction, Attack
 
@@ -75,36 +76,43 @@ def check_have_attack(act_list) -> bool:
     return False
 
 
-def get_info_action(act_list) -> dict:
-    output = {
+def deepcopy_env(base_map, pos_list, act_list):
+    return deepcopy(base_map), deepcopy(pos_list), deepcopy(act_list)
+
+
+def prepare_action(act_list) -> (dict, list):
+    info = {
         "attack": [],
         "switch": False,
         "reface": False,
         "god_attack": None,
-        "use_god_attack":False,
+        "use_god_attack": False,
         "drop": 0,
     }
     for idx, act in enumerate(act_list, start=1):
         match idx, act:
             case _, act if act in FaceAction.FACE_ACTION_V2.value:
-                output["reface"] = True
-                output["drop"] += 1
+                info["reface"] = True
+                info["drop"] += 1
                 break
             case _, Attack.WOODEN.value:
-                output["attack"] = act
-                output["drop"] += 1
-                break
+                info["attack"] = act
+                info["drop"] += 1
+                if 1 < idx < len(act_list) and not info["reface"] and act_list[idx] == act_list[idx - 2]:
+                    break
+                else:
+                    act_list[idx - 1] = [22, 22]
             case _, Attack.BOMB.value:
-                output["attack"] = act
-                output["drop"] += 1
+                info["attack"] = act
+                info["drop"] += 1
             case idx, Attack.HAMMER.value if idx == 1:  # hammer
-                output["god_attack"] = act
-                output["use_god_attack"]= True
+                info["god_attack"] = act
+                info["use_god_attack"] = True
             case _, Attack.HAMMER.value:
-                output["god_attack"] = act
+                info["god_attack"] = act
                 break
             case _, Attack.SWITCH_WEAPON.value:  # switch weapon
-                output["switch"] = True
+                info["switch"] = True
             case _, act if act != [0, 0]:
-                output["drop"] += 1
-    return output
+                info["drop"] += 1
+    return info, act_list

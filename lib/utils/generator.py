@@ -1,3 +1,5 @@
+from game.match import PLAYER_ID
+from lib.model.dataclass import Player
 from lib.model.enum.action import FaceAction
 
 
@@ -26,8 +28,10 @@ def gen_direction(list_action: list[list]):
             case [0, 0]:
                 break
             case [2, 2]:
-                direction += "b" #wooden
+                direction += "b" #wooden and wait
                 break
+            case [22, 22]:
+                direction += "b" #wooden and move
             case [3, 3]:
                 direction += "b" #bomb
             case FaceAction.UP_V2.value:
@@ -59,3 +63,22 @@ def gen_action_data(action: str, mountain_god: bool = True, child: bool = False,
             return {"action": action, "payload": payload}
         case _:
             return {"action": action}
+
+
+def gen_bomb(player: Player):
+    return {
+        "row": player.position[0],
+        "col": player.position[1],
+        "playerId": PLAYER_ID,
+        "power": player.power,
+        "remainTime": 2000,
+    }
+
+
+def gen_hammer(pos):
+    return {
+        "destination": {
+            "col": pos[1],
+            "row": pos[0],
+        }
+    }

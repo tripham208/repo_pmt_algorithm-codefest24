@@ -1,0 +1,3 @@
+- không duyệt lần lượt action di chuyển
+- check vị trí trong khung xác định (h) cùng hành động nếu có ở ô đó
+- hàm đánh giá tại vị trí xác định

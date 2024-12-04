@@ -1,16 +1,17 @@
 from copy import deepcopy
 
-from game.match import PLAYER_ID
 from lib.alg.val import val
 from lib.model.dataclass import *
 from lib.model.enum.action import get_action_zone, Face, FaceAction, Attack
 from lib.model.enum.gameobjects import StatusPoint
 from lib.model.enum.range import WeaponRange, BombRange
-from lib.utils.map import is_zone, get_face_act_v2, check_have_attack
+from lib.utils.generator import gen_bomb, gen_hammer
+from lib.utils.map import is_zone, get_face_act_v2, check_have_attack, deepcopy_env
 from lib.utils.printer import pr_red, pr_yellow, pr_green
 
 H = 4
 H_NO_ATTACK_BOMB = 3
+
 
 
 def check_bomb_have_target(bomb, base_map: Map, enemy: Player, enemy_child: Player) -> bool:
@@ -153,27 +154,8 @@ def get_max_val(
     return response
 
 
-def gen_bomb(player: Player):
-    return {
-        "row": player.position[0],
-        "col": player.position[1],
-        "playerId": PLAYER_ID,
-        "power": player.power,
-        "remainTime": 2000,
-    }
 
 
-def gen_hammer(pos):
-    return {
-        "destination": {
-            "col": pos[1],
-            "row": pos[0],
-        }
-    }
-
-
-def deepcopy_env(base_map, pos_list, act_list):
-    return deepcopy(base_map), deepcopy(pos_list), deepcopy(act_list)
 
 
 def is_valid_hammer(player, enemy):
@@ -211,13 +193,9 @@ def attack_action(
             face = player.face
         else:
             #print("210", locker.another.get("trigger_by_point", False))
-
             if locker.expect_pos == player.position and (
                     locker.another.get("trigger_by_point", False) or player.remember_face):
                 face = locker.expect_face
-        if face == Face.UNKNOWN.value:
-            #print(f"215 level:{level} attack UNKNOW return")
-            return
         if player.position in locker.all_bomb_pos:
             return
         for act_atk in WeaponRange.WOODEN.value:
@@ -426,11 +404,11 @@ def move_action(
     if not can_go_new_pos(new_pos_player, base_map, locker):
         # print(f"405 end:{current_action} level:{level}", act_list, pos_list)
         return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
-    if level >= 3:
-        if Attack.BOMB.value not in act_list and new_pos_player in pos_list:
-            return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
-        if Attack.HAMMER.value not in act_list and new_pos_player in pos_list:
-            return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
+
+    if Attack.BOMB.value not in act_list and new_pos_player in pos_list:
+        return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
+    if Attack.HAMMER.value not in act_list and new_pos_player in pos_list:
+        return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
 
     new_player = deepcopy(player)
     new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)

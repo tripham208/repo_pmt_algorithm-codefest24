@@ -1,6 +1,6 @@
 from lib.alg.max import is_valid_hammer
 from lib.model.enum.range import AroundRange
-from lib.utils.map import euclid_distance, dif_distance_with_target, find_index, get_info_action
+from lib.utils.map import euclid_distance, dif_distance_with_target, find_index, prepare_action
 
 map_s1 = [[1, 0], [1, 1]]
 map_s2 = [[2, 0], [2, 2]]
@@ -64,10 +64,10 @@ def test_get_info_action():
     act_list3 = [[4, 4], [0, 10]]
     act_list4 = [[6, 6], [4, 4]]
     print()
-    print(get_info_action(act_list))
-    print(get_info_action(act_list2))
-    print(get_info_action(act_list3))
-    print(get_info_action(act_list4))
+    print(prepare_action(act_list))
+    print(prepare_action(act_list2))
+    print(prepare_action(act_list3))
+    print(prepare_action(act_list4))
 
 
 def test_f():
