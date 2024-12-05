@@ -28,6 +28,7 @@ class Action(Enum):
     SWITCH_WEAPON = "switch weapon"
     USE_WEAPON = "use weapon"
     MARRY_WIFE = "marry wife"
+    MOVE = [[0, 1], [1, 0], [0, -1], [-1, 0]]
 
 
 class NextMoveZone(Enum):

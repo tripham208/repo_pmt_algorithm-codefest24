@@ -116,3 +116,7 @@ def prepare_action(act_list) -> (dict, list):
             case _, act if act != [0, 0]:
                 info["drop"] += 1
     return info, act_list
+
+
+def sync_env():
+    pass

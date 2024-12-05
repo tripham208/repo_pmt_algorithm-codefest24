@@ -108,6 +108,14 @@ class Player:
                 self.face = Face.DOWN.value
             case [0, -1]:
                 self.face = Face.LEFT.value
+            case [-10, 0]:
+                self.face = Face.UP.value
+            case [0, 10]:
+                self.face = Face.RIGHT.value
+            case [10, 0]:
+                self.face = Face.DOWN.value
+            case [0, -10]:
+                self.face = Face.LEFT.value
 
     @property
     def owned_marry_items(self) -> int:
