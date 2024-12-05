@@ -4,7 +4,7 @@ from copy import deepcopy
 from lib.model.dataclass import Locker, Map, EvaluatedMap
 from lib.model.enum.action import get_move_out_zone
 from lib.model.enum.gameobjects import Objects
-from lib.utils.map import is_zone
+from lib.utils.map import is_zone, euclid_distance
 
 
 def bfs(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap) -> list[int]:
@@ -58,16 +58,18 @@ def next_pos_bfs(actions: list, lock_duplicate: set, queue: list[list], locker: 
                         locker=locker, base_map=base_map, eval_map=eval_map)
 
 
-def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap, is_child : bool=False) -> list[int]:
+def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedMap, is_child: bool = False,
+           player_another_pos: list = None) -> list[int]:
     lock_duplicate = {tuple(start)}
 
-    acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]),is_child=is_child)
+    acts = get_move_out_zone(is_zone(pos=start, size=[base_map.rows, base_map.cols]), is_child=is_child)
     start_status = [start, [], []]
     queue = [start_status]  # current pos , action to pos , pos to pos
     queue = deque(queue)
 
     point, end_status = next_pos_bfs_dq(actions=acts, lock_duplicate=lock_duplicate, queue=queue,
-                                        locker=locker, base_map=base_map, eval_map=eval_map)
+                                        locker=locker, base_map=base_map, eval_map=eval_map,
+                                        player_another_pos=player_another_pos)
     if point >= 25:
         start_status = end_status
 
@@ -75,7 +77,7 @@ def bfs_dq(start: list[int], locker: Locker, base_map: Map, eval_map: EvaluatedM
 
 
 def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Locker, base_map: Map,
-                    eval_map: EvaluatedMap):
+                    eval_map: EvaluatedMap, player_another_pos: list = None):
     current_status = queue[0]
 
     while queue:
@@ -90,7 +92,11 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
                     # or new_pos_player == POS_ENEMY
             ):
                 continue
-            point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
+
+            if player_another_pos is not None and euclid_distance(new_pos_player, player_another_pos) <= 5:
+                continue
+            else:
+                point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
 
             new_status = deepcopy(current_status)
             new_status[1].append(act)
@@ -165,8 +171,8 @@ def bfs_dq_out_danger(start: list[int], danger_list, base_map: Map):
     queue = deque(queue)
 
     end_status = next_pos_bfs_dq_out_danger(actions=acts, danger_list=danger_list, lock_duplicate=lock_duplicate,
-                                                   queue=queue,
-                                                   base_map=base_map)
+                                            queue=queue,
+                                            base_map=base_map)
 
     return end_status[1]
 

@@ -1,11 +1,10 @@
 from copy import deepcopy
 
-from lib.alg.val import val
+from lib.alg.val import val, gen_bomb, gen_hammer
 from lib.model.dataclass import *
 from lib.model.enum.action import get_action_zone, Face, FaceAction, Attack
 from lib.model.enum.gameobjects import StatusPoint
 from lib.model.enum.range import WeaponRange, BombRange
-from lib.utils.generator import gen_bomb, gen_hammer
 from lib.utils.map import is_zone, get_face_act_v2, check_have_attack, deepcopy_env
 from lib.utils.printer import pr_red, pr_yellow, pr_green
 
@@ -289,11 +288,11 @@ def attack_action(
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
         enemy_have_child = False if enemy_child.position == [0, 0] else True
-        pr_yellow(f"god_attack {level}")
+        #pr_yellow(f"god_attack {level}")
 
         # todo máu nhiều hơn phang luôn
         if max(player.transform_type, player_another.transform_type) == Objects.MOUNTAIN_GOD.value:
-            print(f"god_attack {level} check enemy")
+            #print(f"god_attack {level} check enemy")
             if is_valid_hammer(player, enemy) and not enemy.is_stun:  # 9
                 print("valid ene")
                 new_player = deepcopy(player)

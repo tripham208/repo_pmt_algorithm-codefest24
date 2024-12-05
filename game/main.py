@@ -15,10 +15,15 @@ from lib.utils.generator import gen_direction, gen_drive_data, gen_action_data
 from lib.utils.map import euclid_distance, find_index, prepare_action
 from lib.utils.printer import pr_green, pr_yellow, pr_red
 from match import *
+from test import show_map
 
 # MAP
 MAP = Map(map=[], bombs=[], spoils=[])
 EVALUATED_MAP = EvaluatedMap(player_map=[], enemy_map=[], road_map=[])
+
+SHARE_ENV = {
+
+}
 
 # PLAYER
 PLAYER = Player(position=[])  # [row,col]
@@ -286,7 +291,12 @@ def get_action(case, param: dict = None) -> list:
                 return []
             return x
         case 2:
-            return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
+            if not HAVE_CHILD:
+                return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
+            else:
+                return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP,
+                              player_another_pos=PLAYER_CHILD.position)
+
         case 4:
             return a_star_optimized(
                 start=PLAYER.position, locker=LOCKER, base_map=MAP, target=param.get("target", PLAYER.position)
@@ -306,8 +316,10 @@ def get_action(case, param: dict = None) -> list:
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
             return x
         case 20:
-            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP, eval_map=EVALUATED_MAP,
-                          is_child=True)
+            return bfs_dq(start=PLAYER_CHILD.position, is_child=True, locker=LOCKER, base_map=MAP,
+                          eval_map=EVALUATED_MAP,
+                          player_another_pos=PLAYER.position)
+
         case 40:
             return a_star_optimized(
                 start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP,
@@ -462,7 +474,7 @@ DRIVE_HIST_CHILD = []
 RANGE_TIME = 500
 RANGE_TIME_OWN = 400
 
-
+# todo check start di chuyen, bomb ddeer nhieeu ac tion hown
 def check_valid_event(checkpoint: dict, data):
     return (
             checkpoint["count_action"] == checkpoint["action_per_emit"]
@@ -488,7 +500,7 @@ def ticktack_handler(data):
     global HAVE_CHILD
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if check_valid_event(CHECKPOINT_PLAYER, data):
+    if check_valid_event(CHECKPOINT_PLAYER, data) :#and False
         pr_red("process PLAYER")
 
         if not is_paste_update:
@@ -519,10 +531,10 @@ def ticktack_handler(data):
             if not PLAYER.has_transform:  # todo :check map 2 cái có gần nhau ko thì fi đến chỗ cái kia
                 set_road_to_badge()
 
-            if PLAYER.has_transform and len(MAP.badges) > 0:
-                set_road_to_badge2()
+            # if PLAYER.has_transform and len(MAP.badges) > 0:
+            #     set_road_to_badge2()
 
-            if EVALUATED_MAP.get_val_road(PLAYER.position) == 0:
+            if EVALUATED_MAP.get_val_road(PLAYER.position) <= 0:
                 set_road_to_point(PLAYER.position)
 
             act_list = get_action(1)
@@ -530,7 +542,7 @@ def ticktack_handler(data):
         if act_list and not STOP_THREADS_PLAYER:
             process_emit_action(act_list)
     # CHILD
-    # HAVE_CHILD = True  # enable khi chỉ muon run child
+    #HAVE_CHILD = True  # enable khi chỉ muon run child
     if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD:
         pr_red("process child")
 
@@ -552,7 +564,8 @@ def ticktack_handler(data):
             pr_red("CHILD outtttt")
             act_list = bfs_dq_out_danger(PLAYER_CHILD.position, LOCKER_CHILD.danger_pos_lock_max, MAP)
         else:
-            if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) == 0:
+            if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) <= 0:
+                print("chil road to point")
                 set_road_to_point(PLAYER_CHILD.position, child=True)
             act_list = get_action(10)
         # sys_exit()
@@ -587,7 +600,7 @@ def disconnect():
 @sio.on(event=JOIN_GAME_EVENT)
 def event_handle(data):
     print(f"joined game:{data}")
-    emit_register(game_id=GAME_ID, god_type=1)
+    emit_register(game_id=GAME_ID, god_type=CURRENT_GOD)
 
 
 RUNNING = False
