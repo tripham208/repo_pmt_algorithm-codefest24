@@ -294,26 +294,42 @@ def attack_action(
         if max(player.transform_type, player_another.transform_type) == Objects.MOUNTAIN_GOD.value:
             #print(f"god_attack {level} check enemy")
             if is_valid_hammer(player, enemy) and not enemy.is_stun:  # 9
-                print("valid ene")
+                #print("valid ene")
                 new_player = deepcopy(player)
                 new_base_map, new_pos_list, new_act_list = deepcopy_env(base_map, pos_list, act_list)
 
                 new_act_list.append(Attack.HAMMER.value)
                 new_base_map.hammers.append(gen_hammer(enemy.position))
                 #print(new_base_map.hammers)
-                tmp_response = get_max_val(
-                    actions=actions,
-                    base_map=new_base_map,
-                    evaluated_map=evaluated_map,
-                    locker=locker,
-                    player=new_player,
-                    enemy=enemy,
-                    player_another=player_another,
-                    enemy_child=enemy_child,
-                    level=level + 1,
-                    pos_list=new_pos_list,
-                    act_list=new_act_list,
-                )
+                if level == 1:
+                    tmp_response = get_max_val(
+                        actions=[[0,0]],
+                        base_map=new_base_map,
+                        evaluated_map=evaluated_map,
+                        locker=locker,
+                        player=new_player,
+                        enemy=enemy,
+                        player_another=player_another,
+                        enemy_child=enemy_child,
+                        level=level + 1,
+                        pos_list=new_pos_list,
+                        act_list=new_act_list,
+                    )
+                    print("level 1")
+                else:
+                    tmp_response = get_max_val(
+                        actions=actions,
+                        base_map=new_base_map,
+                        evaluated_map=evaluated_map,
+                        locker=locker,
+                        player=new_player,
+                        enemy=enemy,
+                        player_another=player_another,
+                        enemy_child=enemy_child,
+                        level=level + 1,
+                        pos_list=new_pos_list,
+                        act_list=new_act_list,
+                    )
 
                 #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
                 if response.value < tmp_response.value:

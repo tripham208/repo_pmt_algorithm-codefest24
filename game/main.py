@@ -15,7 +15,6 @@ from lib.utils.generator import gen_direction, gen_drive_data, gen_action_data
 from lib.utils.map import euclid_distance, find_index, prepare_action
 from lib.utils.printer import pr_green, pr_yellow, pr_red
 from match import *
-from test import show_map
 
 # MAP
 MAP = Map(map=[], bombs=[], spoils=[])
@@ -54,6 +53,11 @@ def paste_player_data(players):
     global PLAYER, ENEMY, HAVE_CHILD, ENEMY_NOT_IN_MAP
     ENEMY_NOT_IN_MAP = True
 
+    ENEMY.position = [0, 0]
+    ENEMY.is_stun = True
+    ENEMY_CHILD.position = [0, 0]
+    ENEMY_CHILD.is_stun = True
+
     for player in players:
         # print(player["id"],check_id_child(player["id"]))
         if player["id"] in PLAYER_ID and not player.get("isChild", False):
@@ -88,16 +92,12 @@ def paste_player_data(players):
             PLAYER_CHILD.time_to_use_special_weapons = player["timeToUseSpecialWeapons"]
             HAVE_CHILD = True
         elif player["id"] not in PLAYER_ID and player.get("isChild", False):
-            # print("paste_ENEMY_CHILD")
-            ENEMY_CHILD.position = [0, 0]
-            ENEMY_CHILD.is_stun = True
+            # print("paste_ENEMY_CHILD", player)
             ENEMY_CHILD.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
             ENEMY_CHILD.power = player["power"]
             ENEMY_CHILD.is_stun = player["isStun"]
         else:
-            # print("paste_ENEMY")
-            ENEMY.position = [0, 0]
-            ENEMY.is_stun = True
+            # print("paste_ENEMY", player)
             ENEMY.lives = player["lives"]
             ENEMY_CHILD.lives = player["lives"]
             ENEMY.position = [player["currentPosition"]["row"], player["currentPosition"]["col"]]
@@ -106,10 +106,10 @@ def paste_player_data(players):
             ENEMY.transform_type = player.get("transformType", 0)
             ENEMY.is_stun = player["isStun"]
             ENEMY_NOT_IN_MAP = False
-    # print(PLAYER)
-    # print(PLAYER_CHILD)
-    # print(ENEMY)
-    # print(ENEMY_CHILD)
+    print(PLAYER)
+    print(PLAYER_CHILD)
+    print(ENEMY)
+    print(ENEMY_CHILD)
 
 
 def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
@@ -184,6 +184,8 @@ def paste_update(data):
 
     pr_yellow(f"spoil {MAP.spoils}")
     pr_yellow(f"bombs {MAP.bombs}")
+    pr_yellow(f"hammers {MAP.hammers}")
+    pr_yellow(f"wind {MAP.winds}")
 
 
 def get_lock_bombs(base_map: Map):
@@ -367,6 +369,13 @@ def process_emit_action(origin_act_list, child: bool = False):
         dedup_action(act_list, child=child)
     drive_data = gen_drive_data(direction, child=child)
     emit_drive(drive_data)
+    # if len(direction) < 1 or direction == 'b':
+    #     if child:
+    #         print("set_range_time_no_direction child")
+    #         set_range_time_no_direction("child")
+    #     else:
+    #         print("set_range_time_no_direction")
+    #         set_range_time_no_direction("player")
 
 
 def handle_info_action(checkpoint: dict, info: dict, act_list):
@@ -471,15 +480,36 @@ def sys_exit():
 DRIVE_HIST_PLAYER = []
 DRIVE_HIST_CHILD = []
 
-RANGE_TIME = 500
-RANGE_TIME_OWN = 400
+# all action another / check from timestamp_nearest_stop
+RANGE_TIME = {
+    "child": 500,
+    "player": 500
+}
+# all event by  player
+RANGE_TIME_OWN = {
+    "child": 400,
+    "player": 400
+}
+
+
+def set_range_time_no_direction(type_set: str):
+    global RANGE_TIME, RANGE_TIME_OWN
+    RANGE_TIME[type_set] = 400
+    RANGE_TIME_OWN[type_set] = 300
+
+
+def reset_range_time(type_set: str):
+    global RANGE_TIME, RANGE_TIME_OWN
+    RANGE_TIME[type_set] = 500
+    RANGE_TIME_OWN[type_set] = 400
+
 
 # todo check start di chuyen, bomb ddeer nhieeu ac tion hown
-def check_valid_event(checkpoint: dict, data):
+def check_valid_event(checkpoint: dict, data, type_get: str):
     return (
             checkpoint["count_action"] == checkpoint["action_per_emit"]
-            or data["timestamp"] - checkpoint["timestamp_own"] > RANGE_TIME_OWN
-            or data["timestamp"] - checkpoint["timestamp_nearest_stop"] > RANGE_TIME
+            or data["timestamp"] - checkpoint["timestamp_own"] > RANGE_TIME_OWN[type_get]
+            or data["timestamp"] - checkpoint["timestamp_nearest_stop"] > RANGE_TIME[type_get]
     )
 
 
@@ -500,7 +530,7 @@ def ticktack_handler(data):
     global HAVE_CHILD
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if check_valid_event(CHECKPOINT_PLAYER, data) :#and False
+    if check_valid_event(CHECKPOINT_PLAYER, data, "player"):  #and False
         pr_red("process PLAYER")
 
         if not is_paste_update:
@@ -510,14 +540,14 @@ def ticktack_handler(data):
         if CHECKPOINT_PLAYER["count_action"] == CHECKPOINT_PLAYER["action_per_emit"]:
             pr_yellow("player trigger by point")
             LOCKER.another["trigger_by_point"] = True
-        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"] > RANGE_TIME_OWN:
+        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_own"] > RANGE_TIME_OWN["player"]:
             pr_yellow("player trigger by timeout own")
-        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_nearest_stop"] > RANGE_TIME:
+        if data["timestamp"] - CHECKPOINT_PLAYER["timestamp_nearest_stop"] > RANGE_TIME["player"]:
             pr_yellow("player trigger by timeout")
 
         CHECKPOINT_PLAYER["timestamp_nearest_stop"] = data["timestamp"]
         CHECKPOINT_PLAYER["action_per_emit"] = 1
-
+        reset_range_time("player")
         # print(LOCKER)
 
         if PLAYER.position in LOCKER.danger_pos_lock_max:
@@ -543,7 +573,7 @@ def ticktack_handler(data):
             process_emit_action(act_list)
     # CHILD
     #HAVE_CHILD = True  # enable khi chỉ muon run child
-    if check_valid_event(CHECKPOINT_CHILD, data) and HAVE_CHILD:
+    if check_valid_event(CHECKPOINT_CHILD, data, "child") and HAVE_CHILD:
         pr_red("process child")
 
         if not is_paste_update:
@@ -552,13 +582,14 @@ def ticktack_handler(data):
         if CHECKPOINT_CHILD["count_action"] == CHECKPOINT_CHILD["action_per_emit"]:
             pr_yellow("CHILD trigger by point")
             LOCKER_CHILD.another["trigger_by_point"] = True
-        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_own"] > RANGE_TIME_OWN:
+        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_own"] > RANGE_TIME_OWN["child"]:
             pr_yellow(f"CHILD trigger by timeout own{data["timestamp"], CHECKPOINT_CHILD["timestamp_own"]}")
-        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_nearest_stop"] > RANGE_TIME:
+        if data["timestamp"] - CHECKPOINT_CHILD["timestamp_nearest_stop"] > RANGE_TIME["child"]:
             pr_yellow("CHILD trigger by timeout")
 
         CHECKPOINT_CHILD["timestamp_nearest_stop"] = data["timestamp"]
         CHECKPOINT_CHILD["action_per_emit"] = 1
+        reset_range_time("child")
 
         if PLAYER_CHILD.position in LOCKER_CHILD.danger_pos_lock_max:
             pr_red("CHILD outtttt")
@@ -611,16 +642,23 @@ lock = threading.Lock()
 def check_in_god(player_pos, base_map: Map, child=False):
     global STOP_THREADS_CHILD, STOP_THREADS_PLAYER
     god_pos = base_map.get_pos_god_weapon
+    print(player_pos, god_pos)
     if player_pos in god_pos:
-        act_list = bfs_dq_out_danger(PLAYER_CHILD.position, god_pos, MAP)
+        if child:
+            act_list = bfs_dq_out_danger(PLAYER_CHILD.position, god_pos, MAP)
+        else:
+            act_list = bfs_dq_out_danger(PLAYER.position, god_pos, MAP)
         if act_list:
             if child:
                 STOP_THREADS_CHILD = True
             else:
-                STOP_THREADS_CHILD = True
+                STOP_THREADS_PLAYER = True
+            pr_red(f"{child} in, {act_list}")
+            drive_data = gen_drive_data("x", child=child)
+            emit_drive(drive_data)
             process_emit_action(act_list, child)
             if child:
-                STOP_THREADS_PLAYER = False
+                STOP_THREADS_CHILD = False
             else:
                 STOP_THREADS_PLAYER = False
 
@@ -634,7 +672,7 @@ def is_have_god(data):
 
 def god_handler(data):
     paste_update(data)
-    print("run")
+    print("run god")
     check_in_god(PLAYER.position, MAP, child=False)
     check_in_god(PLAYER_CHILD.position, MAP, child=True)
 
@@ -650,20 +688,20 @@ def event_handle(data):
 
     player_id_of_event = data.get("player_id", "no id")
     # print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
-
-    # if is_have_god(data):
-    #     god_handler(data)
+    #
+    if is_have_god(data):  # todo
+        god_handler(data)
 
     if player_id_of_event in PLAYER_ID:
         check_ticktack_event(CHECKPOINT_PLAYER, data)
-        # print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
+        print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
     elif check_id_child(player_id_of_event):
         check_ticktack_event(CHECKPOINT_CHILD, data)
-        # print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
+        print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
 
     ticktack_handler(data)
 
-
+#todo vị loạn thread khi có god ? chưa tim đc nguyên nhân => test đứng tại chỗ bị trigger bởi time own
 @sio.on(event=DRIVE_EVENT)
 def event_handle(data):
     pass
