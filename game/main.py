@@ -106,10 +106,10 @@ def paste_player_data(players):
             ENEMY.transform_type = player.get("transformType", 0)
             ENEMY.is_stun = player["isStun"]
             ENEMY_NOT_IN_MAP = False
-    print(PLAYER)
-    print(PLAYER_CHILD)
-    print(ENEMY)
-    print(ENEMY_CHILD)
+    # print(PLAYER)
+    # print(PLAYER_CHILD)
+    # print(ENEMY)
+    # print(ENEMY_CHILD)
 
 
 def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
@@ -364,7 +364,7 @@ def process_emit_action(origin_act_list, child: bool = False):
     else:
         direction = handle_info_action(CHECKPOINT_CHILD, info, act_list)
 
-    print(act_list)
+    #print(act_list)
     if ENABLE_DEDUP:
         dedup_action(act_list, child=child)
     drive_data = gen_drive_data(direction, child=child)
@@ -530,7 +530,7 @@ def ticktack_handler(data):
     global HAVE_CHILD
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if check_valid_event(CHECKPOINT_PLAYER, data, "player"):  #and False
+    if check_valid_event(CHECKPOINT_PLAYER, data, "player"):  # and False
         pr_red("process PLAYER")
 
         if not is_paste_update:
@@ -568,11 +568,11 @@ def ticktack_handler(data):
                 set_road_to_point(PLAYER.position)
 
             act_list = get_action(1)
-        # sys_exit()
-        if act_list and not STOP_THREADS_PLAYER:
-            process_emit_action(act_list)
+        # # sys_exit()
+        # if act_list and not STOP_THREADS_PLAYER:
+        #     process_emit_action(act_list)
     # CHILD
-    #HAVE_CHILD = True  # enable khi chỉ muon run child
+    # HAVE_CHILD = True  # enable khi chỉ muon run child
     if check_valid_event(CHECKPOINT_CHILD, data, "child") and HAVE_CHILD:
         pr_red("process child")
 
@@ -637,30 +637,34 @@ def event_handle(data):
 RUNNING = False
 
 lock = threading.Lock()
+ts_god = 0
+range_time_god = 400
 
-
-def check_in_god(player_pos, base_map: Map, child=False):
-    global STOP_THREADS_CHILD, STOP_THREADS_PLAYER
-    god_pos = base_map.get_pos_god_weapon
-    print(player_pos, god_pos)
-    if player_pos in god_pos:
-        if child:
-            act_list = bfs_dq_out_danger(PLAYER_CHILD.position, god_pos, MAP)
-        else:
-            act_list = bfs_dq_out_danger(PLAYER.position, god_pos, MAP)
-        if act_list:
+def check_in_god(player_pos, base_map: Map, ts, child=False):
+    global STOP_THREADS_CHILD, STOP_THREADS_PLAYER,ts_god
+    if ts - ts_god > range_time_god:
+        god_pos = base_map.get_pos_god_weapon
+        print(player_pos, god_pos)
+        if player_pos in god_pos:
             if child:
-                STOP_THREADS_CHILD = True
+                act_list = bfs_dq_out_danger(PLAYER_CHILD.position, god_pos, MAP)
             else:
-                STOP_THREADS_PLAYER = True
-            pr_red(f"{child} in, {act_list}")
-            drive_data = gen_drive_data("x", child=child)
-            emit_drive(drive_data)
-            process_emit_action(act_list, child)
-            if child:
-                STOP_THREADS_CHILD = False
-            else:
-                STOP_THREADS_PLAYER = False
+                act_list = bfs_dq_out_danger(PLAYER.position, god_pos, MAP)
+            if act_list:
+                if child:
+                    STOP_THREADS_CHILD = True
+                else:
+                    STOP_THREADS_PLAYER = True
+                pr_red(f"{child} in, {act_list}")
+                # drop old drive
+                drive_data = gen_drive_data("x", child=child)
+                emit_drive(drive_data)
+                ts_god = ts
+                process_emit_action(act_list, child)
+                if child:
+                    STOP_THREADS_CHILD = False
+                else:
+                    STOP_THREADS_PLAYER = False
 
 
 def is_have_god(data):
@@ -673,8 +677,9 @@ def is_have_god(data):
 def god_handler(data):
     paste_update(data)
     print("run god")
-    check_in_god(PLAYER.position, MAP, child=False)
-    check_in_god(PLAYER_CHILD.position, MAP, child=True)
+    ts = data["timestamp"]
+    check_in_god(PLAYER.position, MAP, ts, child=False)
+    check_in_god(PLAYER_CHILD.position, MAP, ts, child=True)
 
 
 STOP_THREADS_PLAYER = False
@@ -701,7 +706,8 @@ def event_handle(data):
 
     ticktack_handler(data)
 
-#todo vị loạn thread khi có god ? chưa tim đc nguyên nhân => test đứng tại chỗ bị trigger bởi time own
+
+# todo bị loạn thread khi có god ? chưa tim đc nguyên nhân => test đứng tại chỗ bị trigger bởi time own
 @sio.on(event=DRIVE_EVENT)
 def event_handle(data):
     pass

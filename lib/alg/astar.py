@@ -75,6 +75,8 @@ def a_star_optimized(start: list, target: list[int, int], locker: Locker, base_m
 
             if base_map.get_obj_map(new_pos_player) == 3:
                 dis = euclid_distance(new_pos_player, target) + 1.5
+            # elif base_map.get_obj_map(new_pos_player) == 2:
+            #     dis = euclid_distance(new_pos_player, target) + 1.5
             else:
                 dis = euclid_distance(new_pos_player, target)
             heappush(queue, (dis, new_pos_player, new_pos_list, new_act_list))

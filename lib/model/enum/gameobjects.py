@@ -31,6 +31,7 @@ class Objects(Enum):
 
     A_STAR_PHASE1_LOCK = [1, 2, 5]
     A_STAR_PHASE2_LOCK = [1, 5]
+    A_STAR_ENEMY_LOCK = [1, 2, 3, 5]
 
     MARRY_ITEM = [32, 33, 34, 35, 36]
     DESTRUCTIBLE = [2, 3]
@@ -57,7 +58,7 @@ class StatusPoint(Enum):
     BALK = 1000
 
     # bonus
-    BOMB_ENEMY = 2000
+    BOMB_ENEMY = 3000
     GOD_ENEMY = 4000
 
 
@@ -114,13 +115,12 @@ class Time(Enum):
     REMAIN_TIME_LOCK = 600
     TIME_UNLOCK = 300
 
-    DELAY = 2000 #TIME basic attack
+    DELAY = 2000  # TIME basic attack
 
     HAMMER = 10000
     WIND = 5000
 
     WOODEN = 2000
-
 
 
 class Cell(Enum):

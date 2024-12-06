@@ -1,4 +1,7 @@
+from copy import deepcopy
+
 from game.match import PLAYER_ID
+from lib.alg.astar import a_star_optimized
 from lib.model.dataclass import *
 from lib.model.enum.action import FaceAction, Action
 from lib.model.enum.gameobjects import StatusPoint
@@ -57,7 +60,7 @@ def calculate_bombs(base_map: Map, player: Player):
                         if not will_destroy:
                             point += 500
                         if new:
-                            dis += euclid_distance(player.position, pos) # bonus near pos will des
+                            dis += euclid_distance(player.position, pos)  # bonus near pos will des
                     break
                 elif base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
                     break
@@ -85,16 +88,28 @@ def calculate_pos_ally(player: Player, another_player: Player) -> int:
     dis = euclid_distance(player.position, another_player.position)
     if dis <= 3:
         point = -1000
-    elif dis <= 5:
+    elif dis <= 0:
         point = -500
-    elif dis <= 7:
+    elif dis <= 0:
         point = -100
 
     return point
 
 
-def calculate_pos_enemy(base_map: Map, player: Player, enemy: Player, enemy_child: Player) -> int:
-    pass
+def calculate_pos_enemy(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker, player: Player, enemy: Player,
+                        enemy_child: Player) -> int:
+    if not player.is_child:
+        locker = deepcopy(locker)
+        locker.a_star_lock = Objects.A_STAR_ENEMY_LOCK.value
+        if euclid_distance(player.position, enemy.position) < 7:
+            act_list, pos_list = a_star_optimized(
+                start=player.position, locker=locker, base_map=base_map, target=enemy.position
+            )
+            if len(act_list) > 10 or len(pos_list) == 0:
+                return 200
+            else:
+                return - 200
+    return 0
 
 
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
@@ -158,11 +173,15 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         if i in FaceAction.FACE_ACTION_V2.value:
             bonus -= 200
     value += bonus
-    value += bonus_badge # badge
-    value += deny_bomb # work in bomb
+    value += bonus_badge  # badge
+    value += deny_bomb  # work in bomb
     value += calculate_pos_ally(player, player_another)
+    # todo check
+    # if enemy.transform_type == 2 and (player.transform_type == 1 or player_another.transform_type == 1):
+    #     value += calculate_pos_enemy(base_map, evaluated_map, locker, player, enemy, enemy_child)
+    #     print("180 enable")
     if value > 100:
-        value += 100 - len(act_list) * 10 # len step
+        value += 100 - len(act_list) * 10  # len step
 
     if not is_not_in_corner(player.position, pos_all, base_map):
         value -= 1000
