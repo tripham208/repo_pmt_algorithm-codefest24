@@ -7,7 +7,7 @@ from lib.model.enum.gameobjects import Objects
 from lib.model.enum.range import BombRange
 
 
-def simulator_action(player: Player, base_map: Map, act_list: list):
+def action_simulator(player: Player, base_map: Map, act_list: list):
     fake_player = deepcopy(player)
     destroy_pos = []
     move_pos = [player.position]

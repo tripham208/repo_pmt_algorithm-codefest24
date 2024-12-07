@@ -5,7 +5,7 @@ import time
 import socketio
 
 from lib.alg.astar import a_star_optimized
-from lib.alg.bfs import bfs_dq, bfs_dq_out_danger
+from lib.alg.bfs_action import bfs_dq, bfs_dq_out_danger
 from lib.alg.max import max_val, gen_hammer
 from lib.model.dataclass import *
 from lib.model.enum.action import Action, Attack
@@ -693,7 +693,7 @@ def event_handle(data):
 
     player_id_of_event = data.get("player_id", "no id")
     # print("event_handle", data["id"], "-", data.get("player_id", "no id"), "-", data["tag"], "-", data["timestamp"])
-    #
+
     if is_have_god(data):  # todo
         god_handler(data)
 

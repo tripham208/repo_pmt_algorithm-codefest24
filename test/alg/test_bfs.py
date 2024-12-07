@@ -1,6 +1,9 @@
-from lib.alg.bfs import bfs, bfs_dq, bfs_around_dq
+from lib.alg.bfs_action import bfs_dq
+from lib.alg.bfs_position import bfs_possible_position
 from test import time_function
 from test.conftest import *
+from unused import bfs
+from unused.bfs import bfs_around_dq
 
 
 def test_bfs(mock_locker, mock_base_map, mock_eval_map):
@@ -21,3 +24,10 @@ def test_bfs_around_dq(mock_eval_map, mock_base_map):
     result_bfs, time_bfs = time_function(bfs_around_dq, start, mock_base_map, mock_eval_map)
     print()
     print(f"Original  result: {result_bfs}, Time taken: {time_bfs} seconds")
+
+def test_bfs_possible_position(mock_eval_map, mock_base_map, mock_locker):
+    start = [15, 15]
+    result_bfs, time_bfs = time_function(bfs_possible_position, start,mock_locker, mock_base_map)
+    print()
+    print(f"Original  result: {result_bfs}, ")
+    print(f"Time taken: {time_bfs} seconds ")

@@ -1,7 +1,8 @@
-from lib.alg.astar import a_star_optimized, a_star_original
+from lib.alg.astar import a_star_optimized
 from lib.model.dataclass import Locker, Map
 from lib.model.enum.gameobjects import Objects
 from test import time_function, show_map
+from unused.astar import a_star_original
 
 A = [
     [

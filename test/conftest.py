@@ -8,7 +8,7 @@ M = "d"
 
 @pytest.fixture
 def mock_locker():
-    return Locker(danger_pos_lock_bfs=[], danger_pos_lock_max=[], a_star_lock=[])
+    return Locker(danger_pos_lock_bfs=[], danger_pos_lock_max=[], a_star_lock=[],pos_lock=[])
 
 
 @pytest.fixture
