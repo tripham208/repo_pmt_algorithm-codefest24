@@ -35,6 +35,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
         for act in actions:
             new_pos_player = [sum(i) for i in zip(current_status[0], act)]
             new_pos_tuple = tuple(new_pos_player)
+            #print(current_status, new_pos_player)
             if (
                     new_pos_tuple in lock_duplicate
                     or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.BFS_BLOCK.value
@@ -43,7 +44,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
             ):
                 continue
 
-            if player_another_pos is not None and euclid_distance(new_pos_player, player_another_pos) <= 5:
+            if player_another_pos is not None and euclid_distance(new_pos_player, player_another_pos) <= 3:# todo change range 2 player
                 continue
             else:
                 point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
@@ -53,6 +54,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
             new_status[2].append(new_pos_player)
             new_status[0] = new_pos_player
             lock_duplicate.add(new_pos_tuple)
+            #print(new_status, point)
 
             if point >= 25:
                 return point, new_status

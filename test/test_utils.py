@@ -1,6 +1,7 @@
 from lib.alg.max import is_valid_hammer
 from lib.model.enum.range import AroundRange
 from lib.utils.map import euclid_distance, dif_distance_with_target, find_index, prepare_action
+from lib.utils.point import get_point_match_step_bomb
 
 map_s1 = [[1, 0], [1, 1]]
 map_s2 = [[2, 0], [2, 2]]
@@ -130,6 +131,8 @@ def test_is_valid_hammer():
 
 
 P = "354a46a1-96de9887-14"
+
+
 def check_id_child(pid) -> bool:
     if (
             (pid in P or pid[0:10] in P)
@@ -137,11 +140,30 @@ def check_id_child(pid) -> bool:
     ):
         return True
     return False
+
+
 def test_check_id_child():
-
     child = "354a46a1-96de_child"
-    player =  "354a46a1-96de"
+    player = "354a46a1-96de"
 
-    print(player  in P)
+    print(player in P)
     print(check_id_child(child))
     print(check_id_child("354a46ad1-96de_child"))
+
+
+def test_get_point_match_step_bomb():
+    pos_list = [[9, 7], [9, 7], [9, 8], [9, 9], [9, 10]]
+    pos_dict = {
+        "danger": [[9, 7]],
+        "warning": [[9, 8], [9, 9], [9, 10]],
+        "all": [],
+        "destroy": [],
+        "new": [[9, 8], [9, 9], [9, 10]]
+    }
+    deny_bomb = 0
+    for idx, x in enumerate(pos_list, start=1):
+        if x in pos_dict["danger"]:
+            deny_bomb += get_point_match_step_bomb(idx)
+        if x in pos_dict["warning"] and x not in pos_dict["new"]:
+            deny_bomb += get_point_match_step_bomb(idx) / 2
+    print(deny_bomb)

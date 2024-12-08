@@ -214,11 +214,14 @@ class EvaluatedMap:
         self.road_map = create_map_zero(cols, rows)
 
     def set_point_map(self, base_map: Map, status: Player):
-        self.__set_road_point(base_map)
+        self.__set_road_point(base_map, status)
         self.__set_addition_point(base_map, status)
 
-    def __set_road_point(self, base_map: Map):
-        destructible_values = Objects.DESTRUCTIBLE.value
+    def __set_road_point(self, base_map: Map, status: Player):
+        if status.has_transform:
+            destructible_values = Objects.DESTRUCTIBLE_PHASE2.value
+        else:
+            destructible_values = Objects.DESTRUCTIBLE.value
         around_range_values = AroundRange.LV1_4.value
 
         for row in range(base_map.rows):
@@ -232,7 +235,6 @@ class EvaluatedMap:
         self.__set_spoils(base_map, status)
 
     def __set_bombs(self, base_map: Map):
-        # todo set bomb val point
         # set trong hàm val nên maybe không cần nuwa
         pass
 
@@ -256,4 +258,19 @@ class ValResponse:
     expect_pos: list = field(default_factory=lambda: [0, 0])
     expect_face: int = 0
     # use on-demand
-    another: dict = field(default_factory=lambda: {})
+    another: dict = field(default_factory=lambda: {
+        "pos_des_by_bomb" : []
+    })
+
+
+@dataclass()
+class MapFrame:
+    player: Player
+    base_map: Map
+    possible_pos: dict = field(default_factory=lambda: {})
+
+    @property
+    def get_list_pos_valid(self, deep: int = 4) -> list:
+        list_pos_valid = []
+
+        return list_pos_valid

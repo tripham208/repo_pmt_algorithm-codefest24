@@ -35,6 +35,8 @@ class Objects(Enum):
 
     MARRY_ITEM = [32, 33, 34, 35, 36]
     DESTRUCTIBLE = [2, 3]
+    DESTRUCTIBLE_PHASE1 = [3]
+    DESTRUCTIBLE_PHASE2 = [2]
 
     BALK = 2
     BRICK_WALL = 3
@@ -108,6 +110,8 @@ class Tag(Enum):
         "player:into-wedding-room",
         "bomb:exploded",
         "player:switched-weapon",
+        "player:stun-by-weapon",
+        "player:transformed"
     ]
 
 

@@ -42,6 +42,10 @@ def find_index(matrix, target):
     return badges
 
 
+def next_pos(start: list, action: list) -> list:
+    return [sum(i) for i in zip(start, action)]
+
+
 def get_face_act_v2(act):
     match act:
         case [-1, 0]:
