@@ -11,6 +11,8 @@ from lib.utils.printer import pr_red
 H = 4
 H_NO_ATTACK_BOMB = 3
 
+COUNT_VAL = 0
+
 
 def check_bomb_have_target(bomb, base_map: Map, enemy: Player, enemy_child: Player) -> bool:
     power = bomb.get("power", 0)
@@ -30,6 +32,25 @@ def check_bomb_have_target(bomb, base_map: Map, enemy: Player, enemy_child: Play
     return False
 
 
+def check_bomb_have_num_target(bomb, base_map: Map, enemy: Player, enemy_child: Player) -> bool:
+    power = bomb.get("power", 0)
+    bomb_range = BombRange[f'LV{power}'].value
+    num_target = 0
+
+    for i in bomb_range:
+        for j in i:
+            pos = [bomb["row"] + j[0], bomb["col"] + j[1]]
+            if (
+                    base_map.get_obj_map(pos) == 2
+                    or enemy.position == pos
+                    or enemy_child.position == pos
+            ):
+                num_target += 1
+            elif base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
+                break
+    return num_target
+
+
 def max_val(
         base_map: Map,
         evaluated_map: EvaluatedMap,
@@ -39,6 +60,8 @@ def max_val(
         player_another: Player,
         enemy_child: Player,
 ):
+    global COUNT_VAL
+    COUNT_VAL = 0
     value = StatusPoint.MIN.value
 
     pos_list = [player.position]
@@ -66,11 +89,13 @@ def max_val(
         locker.expect_face = response.expect_face
         if response.another:
             locker.another["hammer"] = response.another.get("hammer")
+            locker.another["pos_des_by_bomb"] = response.another.get("pos_des_by_bomb")
         else:
             locker.another = {}
 
-    pr_red(f"end max_val:{response.value} {act_list}")
-    return act_list
+    pr_red(f"end max_val:{response.value} {act_list} COUNT_VAL:{COUNT_VAL}")
+    COUNT_VAL = 0
+    return act_list, pos_list
 
 
 def get_max_val(
@@ -86,6 +111,7 @@ def get_max_val(
         pos_list,
         act_list,
 ) -> ValResponse:
+    global COUNT_VAL
     response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
     # print(f"90 get_max_val level:{level} current action:{act_list}")
 
@@ -114,7 +140,7 @@ def get_max_val(
             new_act_list = deepcopy(act_list)
             if new_act_list in locker.dedup_act:
                 continue
-            point = val(
+            point, pos_destroy = val(
                 base_map=base_map,
                 evaluated_map=evaluated_map,
                 locker=locker,
@@ -125,10 +151,13 @@ def get_max_val(
                 pos_list=pos_list,
                 act_list=act_list,
             )
+            COUNT_VAL += 1
             # pr_yellow(f"125 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}")
             if response.value < point:
                 # #pr_green(response)
-                response = ValResponse(pos_list=list(pos_list), act_list=list(new_act_list), value=point)
+                response = ValResponse(pos_list=list(pos_list), act_list=list(new_act_list), value=point, another={
+                    "pos_des_by_bomb": pos_destroy
+                })
         else:
             # pr_red(f"{response}")
             tmp_response = move_action(
@@ -212,7 +241,9 @@ def attack_action(
                 new_base_map.set_val_map(pos_w_atk, 0)
                 if (base_map.get_obj_map(pos_w_atk) == 3
                         and (
-                                (player.has_transform or player.is_child)
+                                (
+                                        (player.has_transform or player.is_child)
+                                        and locker.another.get("unlock_brick", True))
                                 or (evaluated_map.get_val_road(pos_w_atk) > 75 and not player.has_transform)
                         )
                 ):
@@ -252,6 +283,7 @@ def attack_action(
     def bomb_attack():
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
+        global COUNT_VAL
 
         # pr_yellow(f"bomb_attack {level}")
         new_player = deepcopy(player)
@@ -292,6 +324,7 @@ def attack_action(
     def god_attack():
         nonlocal response, pos_list, act_list, base_map, level, locker, actions, evaluated_map
         nonlocal player, enemy, player_another, enemy_child
+        global COUNT_VAL
         enemy_have_child = False if enemy_child.position == [0, 0] else True
         # pr_yellow(f"god_attack {level}")
 
@@ -401,6 +434,8 @@ def can_go_new_pos(new_pos_player, base_map: Map, locker: Locker) -> bool:
             or new_pos_player in locker.pos_lock
             or new_pos_player in base_map.get_pos_bombs
             or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.MAX_BLOCK.value
+            or new_pos_player in locker.another["share_env"].get("child_used_pos", [])
+            or new_pos_player in locker.another["share_env"].get("player_used_pos", [])
     ):
         return False
     return True
@@ -420,6 +455,7 @@ def move_action(
         act_list,
         current_action,
 ) -> ValResponse:
+    global COUNT_VAL
     new_pos_player = [sum(i) for i in zip(player.position, current_action)]
     # pr_green(f"400 level:{level} move; current action:{act_list}; current poss:{pos_list}")
 
@@ -460,7 +496,7 @@ def move_action(
         if new_act_list in locker.dedup_act:
             return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
 
-        point = val(
+        point, pos_destroy = val(
             base_map=base_map,
             evaluated_map=evaluated_map,
             locker=locker,
@@ -471,6 +507,8 @@ def move_action(
             pos_list=new_pos_list,
             act_list=new_act_list,
         )
-
-        # print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
-        return ValResponse(value=point, act_list=new_act_list, pos_list=new_pos_list)
+        COUNT_VAL += 1
+        print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)
+        return ValResponse(value=point, act_list=new_act_list, pos_list=new_pos_list, another={
+            "pos_des_by_bomb": pos_destroy
+        })

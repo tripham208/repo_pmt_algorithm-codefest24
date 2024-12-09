@@ -21,7 +21,10 @@ MAP = Map(map=[], bombs=[], spoils=[])
 EVALUATED_MAP = EvaluatedMap(player_map=[], enemy_map=[], road_map=[])
 
 SHARE_ENV = {
-
+    "player_used_pos": [],
+    "child_used_pos": [],
+    "pos_disable_for_bomb_by_player": [],
+    "pos_disable_for_bomb_by_child": [],
 }
 
 # PLAYER
@@ -120,7 +123,11 @@ def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
     locker.warning_pos_max = pos_warning
     locker.all_bomb_pos = pos_all
     # renew
-    locker.another = {"trigger_by_point": False, }
+    locker.another = {
+        "trigger_by_point": False,
+        "unlock_brick": False,
+        "share_env": SHARE_ENV,
+    }
     locker.dedup_act = []
 
 
@@ -187,6 +194,9 @@ def paste_update(data):
     pr_yellow(f"hammers {MAP.hammers}")
     pr_yellow(f"wind {MAP.winds}")
 
+    print(LOCKER)
+    print(LOCKER_CHILD)
+
 
 def get_lock_bombs(base_map: Map):
     pos_danger = []
@@ -220,6 +230,17 @@ def get_lock_bombs(base_map: Map):
     return pos_danger, pos_warning, pos_all
 
 
+# SHARE ENV
+def reset_share_env_by_player(child: bool = False):
+    global SHARE_ENV
+    if child:
+        SHARE_ENV["child_used_pos"] = []
+        SHARE_ENV["pos_disable_for_bomb_by_child"] = []
+    else:
+        SHARE_ENV["player_used_pos"] = []
+        SHARE_ENV["pos_disable_for_bomb_by_player"] = []
+
+
 # EVENT HANDLER
 def set_bonus_point_road(pos_list, start, x: int):
     global EVALUATED_MAP
@@ -246,24 +267,7 @@ def set_road_to_badge():
     set_bonus_point_road(pos_list, PLAYER.position, 100)
 
 
-def get_case_action() -> tuple[int, dict]:
-    if euclid_distance(PLAYER.position, ENEMY.position) <= 4:
-        return 1, {}
-    """
-    if PLAYER.power > 1:
-        for pos in AroundRange.LV1.value:
-            if MAP.get_obj_map([sum(i) for i in zip(PLAYER.position, pos)]) == Objects.BALK.value:
-                return 1, {}
-    """
-    val_pos = EVALUATED_MAP.get_val_road(PLAYER.position)
-
-    if val_pos != 0:
-        return 1, {}
-    else:
-        return 2, {}
-
-
-def get_action(case, param: dict = None) -> list:
+def get_action(case, param: dict = None):
     """
     1 -> MAX \n
     2 -> BFS \n
@@ -276,7 +280,7 @@ def get_action(case, param: dict = None) -> list:
     match case:
         case 1:
             start_time = time.time()
-            x = max_val(
+            act_list, pos_list = max_val(
                 base_map=MAP,
                 evaluated_map=EVALUATED_MAP,
                 locker=LOCKER,
@@ -290,8 +294,11 @@ def get_action(case, param: dict = None) -> list:
 
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
             if check >= 0.25:
-                return []
-            return x
+                return [], []
+
+            SHARE_ENV["player_used_pos"] = pos_list
+            SHARE_ENV["pos_disable_for_bomb_by_player"] = LOCKER.another.get("pos_des_by_bomb", [])
+            return act_list, pos_list
         case 2:
             if not HAVE_CHILD:
                 return bfs_dq(start=PLAYER.position, locker=LOCKER, base_map=MAP, eval_map=EVALUATED_MAP)
@@ -305,7 +312,7 @@ def get_action(case, param: dict = None) -> list:
             )
         case 10:
             start_time = time.time()
-            x = max_val(
+            act_list, pos_list = max_val(
                 base_map=MAP,
                 evaluated_map=EVALUATED_MAP,
                 locker=LOCKER_CHILD,
@@ -315,12 +322,13 @@ def get_action(case, param: dict = None) -> list:
                 enemy_child=ENEMY_CHILD,
             )
             end_time = time.time()
+            SHARE_ENV["child_used_pos"] = pos_list
+            SHARE_ENV["pos_disable_for_bomb_by_child"] = LOCKER.another.get("pos_des_by_bomb", [])
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
-            return x
+            return act_list, pos_list
         case 20:
-            return bfs_dq(start=PLAYER_CHILD.position, is_child=True, locker=LOCKER, base_map=MAP,
-                          eval_map=EVALUATED_MAP,
-                          player_another_pos=PLAYER.position)
+            return bfs_dq(start=PLAYER_CHILD.position, locker=LOCKER_CHILD, base_map=MAP, eval_map=EVALUATED_MAP,
+                          is_child=True, player_another_pos=PLAYER.position)
 
         case 40:
             return a_star_optimized(
@@ -329,17 +337,50 @@ def get_action(case, param: dict = None) -> list:
             )
 
 
+BOX_CLEARED = False
+
+
 def set_road_to_point(start, child: bool = False):
+    global BOX_CLEARED
     if not child:
         act_list, pos_list = get_action(case=2)
-        set_bonus_point_road(pos_list, start, 50)
+        print(pos_list)
+        if len(pos_list) == 0:
+            BOX_CLEARED = True
+        else:
+            BOX_CLEARED = False
+        set_bonus_point_road(pos_list, start, 100)
     else:
         act_list, pos_list = get_action(case=20)
+        print(pos_list)
+        set_bonus_point_road(pos_list, start, 100)
+
+
+def set_road_to_enemy_child(start, child: bool = False):
+    if not child:
+        act_list, pos_list = get_action(case=4, param={"target": ENEMY_CHILD.position})
+        print(pos_list)
+        set_bonus_point_road(pos_list, start, 50)
+    else:
+        act_list, pos_list = get_action(case=40, param={"target": ENEMY_CHILD.position})
+        print(pos_list)
+        set_bonus_point_road(pos_list, start, 50)
+
+
+def set_road_to_enemy(start, child: bool = False):
+    if not child:
+        act_list, pos_list = get_action(case=4, param={"target": ENEMY.position})
+        print(pos_list)
+        set_bonus_point_road(pos_list, start, 50)
+    else:
+        act_list, pos_list = get_action(case=40, param={"target": ENEMY.position})
+        print(pos_list)
         set_bonus_point_road(pos_list, start, 50)
 
 
 def process_emit_action(origin_act_list, child: bool = False):
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
+    global LOCKER, LOCKER_CHILD
 
     info, act_list = prepare_action(origin_act_list)
     # print(act_list)
@@ -358,24 +399,32 @@ def process_emit_action(origin_act_list, child: bool = False):
                 print(payload)
                 # sys_exit()
                 emit_action(gen_action_data(action=Action.USE_WEAPON.value, payload=payload, child=child))
-
+    print(LOCKER.another)
+    print(LOCKER_CHILD.another)
     if not child:
         direction = handle_info_action(CHECKPOINT_PLAYER, info, act_list)
     else:
         direction = handle_info_action(CHECKPOINT_CHILD, info, act_list)
-
-    #print(act_list)
+    # print(act_list)
     if ENABLE_DEDUP:
         dedup_action(act_list, child=child)
     drive_data = gen_drive_data(direction, child=child)
     emit_drive(drive_data)
-    # if len(direction) < 1 or direction == 'b':
-    #     if child:
-    #         print("set_range_time_no_direction child")
-    #         set_range_time_no_direction("child")
-    #     else:
-    #         print("set_range_time_no_direction")
-    #         set_range_time_no_direction("player")
+    origin_pos = PLAYER.position if not child else PLAYER_CHILD.position
+    if (
+            info["attack"] == Attack.WOODEN.value
+            and (direction == 'b'
+            #  or (len(direction) == 2
+            #  and direction[0] == 'b'
+            #  and MAP.get_obj_map(next_pos(origin_pos, FaceAction.FACE_ACTION.value[int(direction[1])])) == 3)
+    ) or direction == ''
+    ):  # todo time in case ~'b1' chưa khớp
+        if child:
+            pr_red("set_range_time_no_direction child")
+            set_range_time_no_direction("child")
+        else:
+            pr_red("set_range_time_no_direction")
+            set_range_time_no_direction("player")
 
 
 def handle_info_action(checkpoint: dict, info: dict, act_list):
@@ -465,7 +514,7 @@ def check_hammer_timeout(hammers):
 
 
 EXIT = 0
-ENABLE_EXIT = False
+ENABLE_EXIT = True
 
 
 def sys_exit():
@@ -527,10 +576,10 @@ def set_road_to_badge2():
 
 
 def ticktack_handler(data):
-    global HAVE_CHILD
+    global HAVE_CHILD, CHECK_COUNT
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if check_valid_event(CHECKPOINT_PLAYER, data, "player"):  # and False
+    if check_valid_event(CHECKPOINT_PLAYER, data, "player") :  #and False
         pr_red("process PLAYER")
 
         if not is_paste_update:
@@ -565,14 +614,22 @@ def ticktack_handler(data):
             #     set_road_to_badge2()
 
             if EVALUATED_MAP.get_val_road(PLAYER.position) <= 0:
+                print("find road")
                 set_road_to_point(PLAYER.position)
+            reset_share_env_by_player()
 
-            act_list = get_action(1)
-        # # sys_exit()
-        # if act_list and not STOP_THREADS_PLAYER:
-        #     process_emit_action(act_list)
+            act_list, pos_list = get_action(1)
+            if not act_list:
+                LOCKER.another["unlock_brick"] = True
+                act_list, pos_list = get_action(1)
+            if BOX_CLEARED and PLAYER.score < ENEMY.score:
+                set_road_to_enemy_child(PLAYER.position)
+
+        # sys_exit()
+        if act_list and not STOP_THREADS_PLAYER:
+            process_emit_action(act_list)
     # CHILD
-    # HAVE_CHILD = True  # enable khi chỉ muon run child
+    #HAVE_CHILD = True   enable khi chỉ muon run child
     if check_valid_event(CHECKPOINT_CHILD, data, "child") and HAVE_CHILD:
         pr_red("process child")
 
@@ -598,11 +655,25 @@ def ticktack_handler(data):
             if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) <= 0:
                 print("chil road to point")
                 set_road_to_point(PLAYER_CHILD.position, child=True)
-            act_list = get_action(10)
+            act_list, pos_list = get_action(10)
+            if not act_list:
+                LOCKER.another["unlock_brick"] = True
+                act_list, pos_list = get_action(10)
+        reset_share_env_by_player(child=True)
         # sys_exit()
+        if CHECK_CHILD_LAGGING:
+            if not act_list:
+                CHECK_COUNT += 1
+            if CHECK_COUNT == 10:
+                set_road_to_enemy(PLAYER_CHILD.position, child=True)
+                get_action(10)
         if act_list and not STOP_THREADS_CHILD:
             process_emit_action(act_list, child=True)
 
+
+# TODO : CHILD BỊ treo
+CHECK_CHILD_LAGGING = False
+CHECK_COUNT = 0
 
 # SOCKET HANDLER
 sio = socketio.Client()
@@ -640,8 +711,9 @@ lock = threading.Lock()
 ts_god = 0
 range_time_god = 400
 
+
 def check_in_god(player_pos, base_map: Map, ts, child=False):
-    global STOP_THREADS_CHILD, STOP_THREADS_PLAYER,ts_god
+    global STOP_THREADS_CHILD, STOP_THREADS_PLAYER, ts_god
     if ts - ts_god > range_time_god:
         god_pos = base_map.get_pos_god_weapon
         print(player_pos, god_pos)
@@ -699,15 +771,16 @@ def event_handle(data):
 
     if player_id_of_event in PLAYER_ID:
         check_ticktack_event(CHECKPOINT_PLAYER, data)
-        print("player", data["id"], CHECKPOINT_PLAYER["count_action"], "in", CHECKPOINT_PLAYER["action_per_emit"])
+        print("player", data["id"], data["tag"], CHECKPOINT_PLAYER["count_action"], "in",
+              CHECKPOINT_PLAYER["action_per_emit"])
     elif check_id_child(player_id_of_event):
         check_ticktack_event(CHECKPOINT_CHILD, data)
-        print("child", data["id"], CHECKPOINT_CHILD["count_action"], "in", CHECKPOINT_CHILD["action_per_emit"])
+        print("child", data["id"], data["tag"], CHECKPOINT_CHILD["count_action"], "in",
+              CHECKPOINT_CHILD["action_per_emit"])
 
     ticktack_handler(data)
 
 
-# todo bị loạn thread khi có god ? chưa tim đc nguyên nhân => test đứng tại chỗ bị trigger bởi time own
 @sio.on(event=DRIVE_EVENT)
 def event_handle(data):
     pass

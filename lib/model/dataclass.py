@@ -13,8 +13,6 @@ class Map:
     spoils: list
     cols: int = 0
     rows: int = 0
-    pos_enemy: list = field(default_factory=lambda: [0, 0])
-    pos_enemy_child: list = field(default_factory=lambda: [0, 0])
     up_point: int = 0
     badges: list = field(default_factory=lambda: [])
     hammers: list = field(default_factory=lambda: [])
@@ -152,9 +150,11 @@ class Locker:
     # dedup max
     dedup_act: list = field(default_factory=lambda: [])
     # use on-demand
-    another: dict = field(default_factory=lambda: {
-        "trigger_by_point": False,
-    })
+    another: dict = field(
+        default_factory=lambda: {
+            "trigger_by_point": False,
+        }
+    )
 
 
 @dataclass
@@ -258,9 +258,11 @@ class ValResponse:
     expect_pos: list = field(default_factory=lambda: [0, 0])
     expect_face: int = 0
     # use on-demand
-    another: dict = field(default_factory=lambda: {
-        "pos_des_by_bomb" : []
-    })
+    another: dict = field(
+        default_factory=lambda: {
+            "pos_des_by_bomb": []
+        }
+    )
 
 
 @dataclass()

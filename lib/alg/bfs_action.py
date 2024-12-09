@@ -38,7 +38,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
             #print(current_status, new_pos_player)
             if (
                     new_pos_tuple in lock_duplicate
-                    or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.BFS_BLOCK.value
+                    or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.NO_DESTROY.value
                     or new_pos_tuple in locker.danger_pos_lock_bfs
                     # or new_pos_player == POS_ENEMY
             ):
