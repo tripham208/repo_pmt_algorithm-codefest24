@@ -1,0 +1,15 @@
+- không duyệt lần lượt action di chuyển
+- check vị trí trong khung xác định (h) cùng hành động nếu có ở ô đó
+- hàm đánh giá tại vị trí xác định
+
+todo:
+- giảm time chờ di chuyển sau phá tường
+    check vị trí phá , vị trí di chuyển nếu có
+- transformed ko chủ động phá brick nữa
+    bỏ point xung quanh
+    chỉ phá khi tìm box
+    max trả về [] , enable đập brick
+todo: flat map
+- 2 step
+    attack
+    move to pos
