@@ -37,54 +37,39 @@ def is_in_corner(pos, pos_danger: list, base_map: Map) -> bool:
     return True
 
 
-def calculate_bombs(base_map: Map, player: Player, locker: Locker):
+def calculate_bombs(base_map: Map, player: Player, locker: Locker, share_env: ShareEnv):
     point = 0
-    pos_dict = {
-        "danger": [],
-        "warning": [],
-        "all": [],
-        "destroy": [],
-        "new": []
-    }
+    pos_dict = base_map.get_pos_bomb
+    # todo neu impl tu sat
     for bomb in base_map.bombs:
-        power = bomb.get("power", 0)
 
+        new = bomb.get("remainTime", 0) == 2000
+        if not new:
+            continue
+
+        power = bomb.get("power", 0)
         bomb_range = BombRange[f'LV{power}'].value
         bomb_pos = [bomb["row"], bomb["col"]]
-        pos_dict["danger"].append(bomb_pos)  # todo neu impl tu sat
-        is_warning = bomb.get("remainTime", 0) > 1000
-        will_destroy = bomb.get("remainTime", 0) < 500
-        new = bomb.get("remainTime", 0) == 2000
+        pos_dict["danger"].append(bomb_pos)
         dis = 0
 
         for i in bomb_range:
             for j in i:
                 pos = [bomb["row"] + j[0], bomb["col"] + j[1]]
                 if base_map.get_obj_map(pos) == 2:
-                    if bomb.get("playerId") in PLAYER_ID:  # todo impl 2 player ko bomb cung ô
-                        #print(locker)
-                        cond = (
-                                pos not in locker.another["share_env"].get("pos_disable_for_bomb_by_child", [])
-                                and pos not in locker.another["share_env"].get("pos_disable_for_bomb_by_player", [])
-                        )
-                        if new and cond:
+                    if bomb.get("playerId")[0:10] in PLAYER_ID:  # todo impl 2 player ko bomb cung ô
+                        if pos not in share_env.targeted_boxes:
                             pos_dict["destroy"].append(pos)
                             point += StatusPoint.BALK.value
                             dis += euclid_distance(player.position, pos)  # bonus near pos will des
                     break
                 elif base_map.get_obj_map(pos) in Objects.BOMB_NO_DESTROY.value:
                     break
-                if is_warning:
-                    pos_dict["warning"].append(pos)
-                else:
-                    pos_dict["danger"].append(pos)
-                if new:
-                    pos_dict["new"].append(pos)
+                pos_dict["new"].append(pos)
                 pos_dict["all"].append(pos)
-        if new:
-            point += 1000 - (dis * 100)
-            if player.position in pos_dict["new"]:
-                point -= 500 - (euclid_distance(player.position, bomb_pos) * 100)
+        point += 1000 - (dis * 100)
+        if player.position in pos_dict["new"]:
+            point -= 500 - (euclid_distance(player.position, bomb_pos) * 100)
 
     return point, pos_dict
 
@@ -128,13 +113,12 @@ def calculate_pos_enemy(base_map: Map, evaluated_map: EvaluatedMap, locker: Lock
 
 def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
         player: Player, enemy: Player, player_another: Player, enemy_child: Player,
-        pos_list: list, act_list: list):
+        pos_list: list, act_list: list, share_env: ShareEnv):
     evaluated_map_point = evaluated_map.get_evaluated_map(pos_player=player.position, pos_enemy=enemy.position,
-                                                          pos_enemy_child=enemy_child.position,
-                                                          pos_player_child=player_another.position)
+                                                          pos_enemy_child=enemy_child.position)
     value = evaluated_map_point
     value += base_map.up_point
-    point, pos_dict = calculate_bombs(base_map, player, locker)
+    point, pos_dict = calculate_bombs(base_map, player, locker, share_env)
     value += point
     bonus = 0
     bonus_badge = 0  # [[9, 19], [9, 22]]
@@ -208,8 +192,7 @@ def val(base_map: Map, evaluated_map: EvaluatedMap, locker: Locker,
     #     if calculate_pos(player_another.position, pos_danger, base_map):
     #         value -= 500
 
-    god_pos = base_map.get_pos_hammers
-    god_pos += base_map.get_pos_winds
+    god_pos = base_map.get_pos_god_weapon
     # print(god_pos)
     if player.position in god_pos:
         value += StatusPoint.DANGER.value

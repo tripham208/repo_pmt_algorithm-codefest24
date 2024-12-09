@@ -39,7 +39,7 @@ def next_pos_bfs(actions: list, lock_duplicate: set, queue: list[list], locker: 
                 # or new_pos_player == POS_ENEMY
         ):
             continue
-        point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
+        point = eval_map.player_map[new_pos_player[0]][new_pos_player[1]]
 
         new_status = deepcopy(current_status)
         new_status[1].append(act)
@@ -89,7 +89,7 @@ def next_pos_around_dq(actions: list, lock_duplicate: set, queue: deque, base_ma
             ):
                 continue
 
-            point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
+            point = eval_map.player_map[new_pos_player[0]][new_pos_player[1]]
 
             if point == 0 and current_status[1] == level_around:  # check den round n
                 continue

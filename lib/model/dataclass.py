@@ -2,15 +2,15 @@ from dataclasses import dataclass, field
 
 from lib.model.enum.action import Face
 from lib.model.enum.gameobjects import MarryItem, Objects, StatusPoint, Weapon
-from lib.model.enum.range import AroundRange, WeaponRange
+from lib.model.enum.range import AroundRange, WeaponRange, BombRange
 from lib.utils.map import create_map_zero
 
 
 @dataclass
 class Map:
-    map: list
-    bombs: list
-    spoils: list
+    map: list = field(default_factory=lambda: [])
+    bombs: list = field(default_factory=lambda: [])
+    spoils: list = field(default_factory=lambda: [])
     cols: int = 0
     rows: int = 0
     up_point: int = 0
@@ -67,12 +67,41 @@ class Map:
         pos_danger = self.get_pos_winds + self.get_pos_hammers
         return pos_danger
 
+    @property
+    def get_pos_bomb(self) -> dict:
+        pos_bomb_dict = {
+            "danger": [],
+            "warning": [],
+            "all": [],
+            "destroy": [],
+            "new": []
+        }
+        for bomb in self.bombs:
+            power = bomb.get("power", 0)
+            bomb_range = BombRange[f'LV{power}'].value
+            bomb_pos = [bomb["row"], bomb["col"]]
+            pos_bomb_dict["danger"].append(bomb_pos)
+            is_warning = bomb.get("remainTime", 0) > 1000
+
+            for i in bomb_range:
+                for j in i:
+                    pos = [bomb["row"] + j[0], bomb["col"] + j[1]]
+                    if self.get_obj_map(pos) in Objects.BOMB_BREAK.value:
+                        break
+                    if is_warning:
+                        pos_bomb_dict["warning"].append(pos)
+                    else:
+                        pos_bomb_dict["danger"].append(pos)
+                    pos_bomb_dict["all"].append(pos)
+
+        return pos_bomb_dict
+
 
 @dataclass
 class Player:
     position: [int, int]
     face: int = Face.UNKNOWN.value
-    owner_weapon = [1]
+    owner_weapon: list = field(default_factory=lambda: [1])
     cur_weapon: int = 1
     time_to_use_special_weapons: int = 0
     transform_type: int = 0
@@ -134,11 +163,14 @@ class Player:
 
 @dataclass
 class Locker:
-    # can use for save status next trigger
-    danger_pos_lock_max: list
-    danger_pos_lock_bfs: list
-    pos_lock: list  # list pos all player + boms
-    a_star_lock: list
+    """
+    Lock anything you want
+    - can use for save status for next trigger
+    """
+    danger_pos_lock_max: list = field(default_factory=lambda: [])
+    danger_pos_lock_bfs: list = field(default_factory=lambda: [])
+    pos_lock: list = field(default_factory=lambda: [])  # list pos all player + boms
+    a_star_lock: list = field(default_factory=lambda: [])
 
     warning_pos_bfs: list = field(default_factory=lambda: [])
     warning_pos_max: list = field(default_factory=lambda: [])
@@ -159,59 +191,33 @@ class Locker:
 
 @dataclass
 class EvaluatedMap:
-    player_map: list
-    enemy_map: list
-    road_map: list
+    enemy_map: list = field(default_factory=lambda: [])
+    player_map: list = field(default_factory=lambda: [])
 
-    def get_evaluated_map(self, pos_player: list, pos_enemy: list,
-                          pos_player_child: list, pos_enemy_child: list):
-        # print(pos_player, "-player_map-",  self.player_map[pos_player[0]][pos_player[1]])
-        # print(pos_player, "-road_map-",  self.road_map[pos_player[0]][pos_player[1]])
-        # print(pos_enemy, "-enemy_map-",  self.enemy_map[pos_enemy[0]][pos_enemy[1]])
-        # print(pos_player_child, "-player_map-",  self.player_map[pos_player_child[0]][pos_player_child[1]])
-        # print(pos_enemy_child, "-enemy_map-",  self.enemy_map[pos_enemy_child[0]][pos_enemy_child[1]])
-
+    def get_evaluated_map(self, pos_player: list, pos_enemy: list, pos_enemy_child: list):
         return sum(
             [
                 self.player_map[pos_player[0]][pos_player[1]],
-                self.road_map[pos_player[0]][pos_player[1]],
                 self.enemy_map[pos_enemy[0]][pos_enemy[1]],
-                self.player_map[pos_player_child[0]][pos_player_child[1]],
                 self.enemy_map[pos_enemy_child[0]][pos_enemy_child[1]],
             ]
         )
 
-    def get_val_player2(self, row, col):
-        return self.player_map[row][col]
-
-    def get_val_enemy2(self, row, col):
-        return self.enemy_map[row][col]
-
-    def get_val_road2(self, row, col):
-        return self.road_map[row][col]
+    def get_val_enemy(self, pos):
+        return self.enemy_map[pos[0]][pos[1]]
 
     def get_val_player(self, pos):
         return self.player_map[pos[0]][pos[1]]
 
-    def get_val_enemy(self, pos):
-        return self.enemy_map[pos[0]][pos[1]]
-
-    def get_val_road(self, pos):
-        return self.road_map[pos[0]][pos[1]]
-
-    def add_val_road(self, pos, val):
-        self.road_map[pos[0]][pos[1]] += val
-
-    def set_val_road(self, pos, val):
-        self.road_map[pos[0]][pos[1]] = val
+    def add_val_player(self, pos, val):
+        self.player_map[pos[0]][pos[1]] += val
 
     def set_val_player(self, pos, val):
         self.player_map[pos[0]][pos[1]] = val
 
     def reset_point_map(self, cols, rows):
-        self.player_map = create_map_zero(cols, rows)
         self.enemy_map = create_map_zero(cols, rows)
-        self.road_map = create_map_zero(cols, rows)
+        self.player_map = create_map_zero(cols, rows)
 
     def set_point_map(self, base_map: Map, status: Player):
         self.__set_road_point(base_map, status)
@@ -228,7 +234,7 @@ class EvaluatedMap:
             for col in range(base_map.cols):
                 if base_map.map[row][col] in destructible_values:
                     for i in around_range_values:
-                        self.road_map[row + i[0]][col + i[1]] = 25
+                        self.player_map[row + i[0]][col + i[1]] = 25
 
     def __set_addition_point(self, base_map: Map, status: Player):
         self.__set_bombs(base_map)
@@ -242,10 +248,9 @@ class EvaluatedMap:
         around_range_values = AroundRange.LV1_4.value
         if status.can_use_item:
             for spoil in base_map.spoils:
-                self.road_map[spoil["row"]][spoil["col"]] = 50
-                self.player_map[spoil["row"]][spoil["col"]] = 100
+                self.player_map[spoil["row"]][spoil["col"]] = 150
                 for i in around_range_values:
-                    self.road_map[spoil["row"] + i[0]][spoil["col"] + i[1]] = 25
+                    self.player_map[spoil["row"] + i[0]][spoil["col"] + i[1]] = 25
 
 
 @dataclass()
@@ -263,6 +268,22 @@ class ValResponse:
             "pos_des_by_bomb": []
         }
     )
+
+
+@dataclass()
+class ShareEnv:
+    player_used_pos: list = field(default_factory=lambda: [])
+    player_targeted_boxes: list = field(default_factory=lambda: [])
+    child_used_pos: list = field(default_factory=lambda: [])
+    child_targeted_boxes: list = field(default_factory=lambda: [])
+
+    @property
+    def used_pos(self):
+        return self.player_used_pos + self.child_used_pos
+
+    @property
+    def targeted_boxes(self):
+        return self.player_targeted_boxes + self.child_targeted_boxes
 
 
 @dataclass()

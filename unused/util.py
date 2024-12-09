@@ -27,7 +27,7 @@ def get_case_action() -> tuple[int, dict]:
             if MAP.get_obj_map([sum(i) for i in zip(PLAYER.position, pos)]) == Objects.BALK.value:
                 return 1, {}
     """
-    val_pos = EVALUATED_MAP.get_val_road(PLAYER.position)
+    val_pos = EVALUATED_MAP.get_val_player(PLAYER.position)
 
     if val_pos != 0:
         return 1, {}

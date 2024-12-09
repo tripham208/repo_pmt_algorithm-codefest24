@@ -59,6 +59,7 @@ def max_val(
         enemy: Player,
         player_another: Player,
         enemy_child: Player,
+        share_env: ShareEnv
 ):
     global COUNT_VAL
     COUNT_VAL = 0
@@ -80,6 +81,7 @@ def max_val(
         level=1,
         pos_list=pos_list,
         act_list=act_list,
+        share_env=share_env
     )
 
     if value < response.value:
@@ -110,6 +112,7 @@ def get_max_val(
         level: int,
         pos_list,
         act_list,
+        share_env: ShareEnv
 ) -> ValResponse:
     global COUNT_VAL
     response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
@@ -131,6 +134,7 @@ def get_max_val(
                 level=level,
                 pos_list=pos_list,
                 act_list=act_list,
+                share_env=share_env
             )
             # print(f"105 act:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {tmp_response.act_list, tmp_response.pos_list}")
             if response.value < tmp_response.value:
@@ -150,6 +154,7 @@ def get_max_val(
                 enemy_child=enemy_child,
                 pos_list=pos_list,
                 act_list=act_list,
+                share_env=share_env
             )
             COUNT_VAL += 1
             # pr_yellow(f"125 stop:{action} level:{level}\033[91m point: {point}\033[00m {response.value} {[response.act_list, action]} {response.pos_list}")
@@ -173,6 +178,7 @@ def get_max_val(
                 pos_list=pos_list,
                 act_list=act_list,
                 current_action=action,
+                share_env=share_env
             )
             # print(f"145 action:{action} level:{level}\033[91m point: {tmp_response.value}\033[00m {response.value} {tmp_response.act_list} {tmp_response.pos_list}")
             if response.value < tmp_response.value:
@@ -212,7 +218,8 @@ def attack_action(
         enemy_child: Player,
         level: int,
         pos_list: list,
-        act_list: list
+        act_list: list,
+        share_env: ShareEnv
 ) -> ValResponse:
     cur_weapon = player.cur_weapon
     response = ValResponse(pos_list=list(pos_list), act_list=list(act_list))
@@ -244,7 +251,7 @@ def attack_action(
                                 (
                                         (player.has_transform or player.is_child)
                                         and locker.another.get("unlock_brick", True))
-                                or (evaluated_map.get_val_road(pos_w_atk) > 75 and not player.has_transform)
+                                or (evaluated_map.get_val_player(pos_w_atk) > 75 and not player.has_transform)
                         )
                 ):
                     new_base_map.up_point += StatusPoint.BRICK_WALL.value
@@ -271,6 +278,7 @@ def attack_action(
                     level=level + 1,
                     pos_list=new_pos_list,
                     act_list=new_act_list,
+                    share_env=share_env
                 )
 
                 # #print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
@@ -315,6 +323,7 @@ def attack_action(
             level=level + 1,
             pos_list=new_pos_list,
             act_list=new_act_list,
+            share_env=share_env,
         )
         if response.value < tmp_response.value:
             response = tmp_response
@@ -352,6 +361,7 @@ def attack_action(
                         level=level + 1,
                         pos_list=new_pos_list,
                         act_list=new_act_list,
+                        share_env=share_env
                     )
                     print("level 1")
                     tmp_response.value += 200
@@ -368,6 +378,7 @@ def attack_action(
                         level=level + 1,
                         pos_list=new_pos_list,
                         act_list=new_act_list,
+                        share_env=share_env
                     )
 
                 # print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
@@ -395,6 +406,7 @@ def attack_action(
                     level=level + 1,
                     pos_list=new_pos_list,
                     act_list=new_act_list,
+                    share_env=share_env
                 )
 
                 # print(f"225 attack:{cur_weapon} level:{level}", new_act_list, new_pos_list)
@@ -428,14 +440,13 @@ def is_basic_attacked(act_list):
         return False
 
 
-def can_go_new_pos(new_pos_player, base_map: Map, locker: Locker) -> bool:
+def can_go_new_pos(new_pos_player, base_map: Map, locker: Locker,share_env: ShareEnv) -> bool:
     if (
             new_pos_player in locker.danger_pos_lock_max
             or new_pos_player in locker.pos_lock
             or new_pos_player in base_map.get_pos_bombs
-            or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.MAX_BLOCK.value
-            or new_pos_player in locker.another["share_env"].get("child_used_pos", [])
-            or new_pos_player in locker.another["share_env"].get("player_used_pos", [])
+            or base_map.get_obj_map(new_pos_player) in Objects.MAX_BLOCK.value
+            or new_pos_player in share_env.used_pos
     ):
         return False
     return True
@@ -454,12 +465,13 @@ def move_action(
         pos_list,
         act_list,
         current_action,
+        share_env: ShareEnv
 ) -> ValResponse:
     global COUNT_VAL
     new_pos_player = [sum(i) for i in zip(player.position, current_action)]
     # pr_green(f"400 level:{level} move; current action:{act_list}; current poss:{pos_list}")
 
-    if not can_go_new_pos(new_pos_player, base_map, locker):
+    if not can_go_new_pos(new_pos_player, base_map, locker,share_env=share_env):
         # print(f"405 end:{current_action} level:{level}", act_list, pos_list)
         return ValResponse(pos_list=list(pos_list), act_list=list(act_list))
 
@@ -491,6 +503,7 @@ def move_action(
             level=level + 1,
             pos_list=new_pos_list,
             act_list=new_act_list,
+            share_env=share_env
         )
     else:
         if new_act_list in locker.dedup_act:
@@ -506,6 +519,7 @@ def move_action(
             enemy_child=enemy_child,
             pos_list=new_pos_list,
             act_list=new_act_list,
+            share_env=share_env
         )
         COUNT_VAL += 1
         print(f"360 end:{current_action} level:{level}\033[91m point: {point}\033[00m", new_act_list, new_pos_list)

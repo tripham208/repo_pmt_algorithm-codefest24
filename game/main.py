@@ -17,15 +17,9 @@ from lib.utils.printer import pr_green, pr_yellow, pr_red
 from match import *
 
 # MAP
-MAP = Map(map=[], bombs=[], spoils=[])
-EVALUATED_MAP = EvaluatedMap(player_map=[], enemy_map=[], road_map=[])
-
-SHARE_ENV = {
-    "player_used_pos": [],
-    "child_used_pos": [],
-    "pos_disable_for_bomb_by_player": [],
-    "pos_disable_for_bomb_by_child": [],
-}
+MAP = Map()
+EVALUATED_MAP = EvaluatedMap()
+SHARE_ENV = ShareEnv()
 
 # PLAYER
 PLAYER = Player(position=[])  # [row,col]
@@ -33,10 +27,8 @@ ENEMY = Player(position=[])
 PLAYER_CHILD = Player(position=[0, 0])
 ENEMY_CHILD = Player(position=[0, 0])
 
-LOCKER = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=Objects.A_STAR_PHASE1_LOCK.value,
-                pos_lock=[])
-LOCKER_CHILD = Locker(danger_pos_lock_max=[], danger_pos_lock_bfs=[], a_star_lock=Objects.A_STAR_PHASE1_LOCK.value,
-                      pos_lock=[])
+LOCKER = Locker(a_star_lock=Objects.A_STAR_PHASE1_LOCK.value)
+LOCKER_CHILD = Locker(a_star_lock=Objects.A_STAR_PHASE2_LOCK.value)
 
 HAVE_CHILD = False
 ENEMY_NOT_IN_MAP = True
@@ -126,7 +118,6 @@ def paste_locker(locker, pos_lock, lock_danger, pos_warning, pos_all):
     locker.another = {
         "trigger_by_point": False,
         "unlock_brick": False,
-        "share_env": SHARE_ENV,
     }
     locker.dedup_act = []
 
@@ -234,18 +225,18 @@ def get_lock_bombs(base_map: Map):
 def reset_share_env_by_player(child: bool = False):
     global SHARE_ENV
     if child:
-        SHARE_ENV["child_used_pos"] = []
-        SHARE_ENV["pos_disable_for_bomb_by_child"] = []
+        SHARE_ENV.child_used_pos = []
+        SHARE_ENV.child_targeted_boxes = []
     else:
-        SHARE_ENV["player_used_pos"] = []
-        SHARE_ENV["pos_disable_for_bomb_by_player"] = []
+        SHARE_ENV.player_used_pos = []
+        SHARE_ENV.player_targeted_boxes = []
 
 
 # EVENT HANDLER
 def set_bonus_point_road(pos_list, start, x: int):
     global EVALUATED_MAP
     for pos in pos_list:
-        EVALUATED_MAP.set_val_road(pos, euclid_distance(start, pos) * x)
+        EVALUATED_MAP.set_val_player(pos, euclid_distance(start, pos) * x)
 
 
 def set_road_to_badge():
@@ -288,6 +279,7 @@ def get_action(case, param: dict = None):
                 enemy=ENEMY,
                 player_another=PLAYER_CHILD,
                 enemy_child=ENEMY_CHILD,
+                share_env=SHARE_ENV
             )
             end_time = time.time()
             check = end_time - start_time
@@ -296,8 +288,8 @@ def get_action(case, param: dict = None):
             if check >= 0.25:
                 return [], []
 
-            SHARE_ENV["player_used_pos"] = pos_list
-            SHARE_ENV["pos_disable_for_bomb_by_player"] = LOCKER.another.get("pos_des_by_bomb", [])
+            SHARE_ENV.player_used_pos = pos_list
+            SHARE_ENV.player_targeted_boxes = LOCKER.another.get("pos_des_by_bomb", [])
             return act_list, pos_list
         case 2:
             if not HAVE_CHILD:
@@ -320,10 +312,11 @@ def get_action(case, param: dict = None):
                 enemy=ENEMY,
                 player_another=PLAYER,
                 enemy_child=ENEMY_CHILD,
+                share_env=SHARE_ENV
             )
             end_time = time.time()
-            SHARE_ENV["child_used_pos"] = pos_list
-            SHARE_ENV["pos_disable_for_bomb_by_child"] = LOCKER.another.get("pos_des_by_bomb", [])
+            SHARE_ENV.child_used_pos = pos_list
+            SHARE_ENV.child_targeted_boxes = LOCKER.another.get("pos_des_by_bomb", [])
             pr_green(f"Original max_val result taken: {end_time - start_time} seconds")
             return act_list, pos_list
         case 20:
@@ -579,7 +572,7 @@ def ticktack_handler(data):
     global HAVE_CHILD, CHECK_COUNT
     global CHECKPOINT_PLAYER, CHECKPOINT_CHILD
     is_paste_update = False
-    if check_valid_event(CHECKPOINT_PLAYER, data, "player") :  #and False
+    if check_valid_event(CHECKPOINT_PLAYER, data, "player"):  # and False
         pr_red("process PLAYER")
 
         if not is_paste_update:
@@ -613,7 +606,7 @@ def ticktack_handler(data):
             # if PLAYER.has_transform and len(MAP.badges) > 0:
             #     set_road_to_badge2()
 
-            if EVALUATED_MAP.get_val_road(PLAYER.position) <= 0:
+            if EVALUATED_MAP.get_val_player(PLAYER.position) <= 0:
                 print("find road")
                 set_road_to_point(PLAYER.position)
             reset_share_env_by_player()
@@ -629,7 +622,7 @@ def ticktack_handler(data):
         if act_list and not STOP_THREADS_PLAYER:
             process_emit_action(act_list)
     # CHILD
-    #HAVE_CHILD = True   enable khi chỉ muon run child
+    # HAVE_CHILD = True   enable khi chỉ muon run child
     if check_valid_event(CHECKPOINT_CHILD, data, "child") and HAVE_CHILD:
         pr_red("process child")
 
@@ -652,7 +645,7 @@ def ticktack_handler(data):
             pr_red("CHILD outtttt")
             act_list = bfs_dq_out_danger(PLAYER_CHILD.position, LOCKER_CHILD.danger_pos_lock_max, MAP)
         else:
-            if EVALUATED_MAP.get_val_road(PLAYER_CHILD.position) <= 0:
+            if EVALUATED_MAP.get_val_player(PLAYER_CHILD.position) <= 0:
                 print("chil road to point")
                 set_road_to_point(PLAYER_CHILD.position, child=True)
             act_list, pos_list = get_action(10)

@@ -20,9 +20,8 @@ def mock_base_map():
 @pytest.fixture
 def mock_eval_map():
     eval_map = EvaluatedMap(
-        player_map=create_map_zero(50, 50),
         enemy_map=create_map_zero(50, 50),
-        road_map=create_map_zero(50, 50)
+        player_map=create_map_zero(50, 50)
     )
     return eval_map
 

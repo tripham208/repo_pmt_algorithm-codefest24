@@ -38,7 +38,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
             #print(current_status, new_pos_player)
             if (
                     new_pos_tuple in lock_duplicate
-                    or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.NO_DESTROY.value
+                    or base_map.get_obj_map(new_pos_player) in Objects.NO_DESTROY.value
                     or new_pos_tuple in locker.danger_pos_lock_bfs
                     # or new_pos_player == POS_ENEMY
             ):
@@ -47,7 +47,7 @@ def next_pos_bfs_dq(actions: list, lock_duplicate: set, queue: deque, locker: Lo
             if player_another_pos is not None and euclid_distance(new_pos_player, player_another_pos) <= 3:# todo change range 2 player
                 continue
             else:
-                point = eval_map.road_map[new_pos_player[0]][new_pos_player[1]]
+                point = eval_map.get_val_player(new_pos_player)
 
             new_status = deepcopy(current_status)
             new_status[1].append(act)
@@ -90,7 +90,7 @@ def next_pos_bfs_dq_out_danger(actions: list, lock_duplicate: set, queue: deque,
             new_pos_tuple = tuple(new_pos_player)
             if (
                     new_pos_tuple in lock_duplicate
-                    or base_map.map[new_pos_player[0]][new_pos_player[1]] in Objects.BFS_BLOCK.value
+                    or base_map.get_obj_map(new_pos_player) in Objects.BFS_BLOCK.value
             ):
                 continue
 
